@@ -356,6 +356,7 @@ function memo(c, comparer) {
 
 	function Memoed(props) {
 		this.shouldComponentUpdate = shouldUpdate;
+		console.error('memo', props);
 		return h(c, assign({}, props));
 	}
 	Memoed.prototype.isReactComponent = true;

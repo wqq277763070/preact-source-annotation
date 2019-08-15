@@ -92,6 +92,10 @@ export function diff(parentDom, newVNode, oldVNode, context, isSvg, excessDomChi
 					c._vnode = newVNode;
 					newVNode._dom = oldVNode._dom;
 					newVNode._children = oldVNode._children;
+					c.base = newVNode._dom;
+					console.log(newVNode.type, 'will not update and keep', newVNode._dom);
+					console.log({ ...oldVNode });
+					console.log({ ...newVNode });
 					break outer;
 				}
 
@@ -151,6 +155,7 @@ export function diff(parentDom, newVNode, oldVNode, context, isSvg, excessDomChi
 		options._catchError(e, newVNode, oldVNode);
 	}
 
+	console.log('returning', newVNode._dom);
 	return newVNode._dom;
 }
 

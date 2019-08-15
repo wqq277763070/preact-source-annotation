@@ -10,6 +10,7 @@ import { assign } from './util';
   * @returns {import('./internal').VNode}
   */
 export function createElement(type, props, children) {
+	console.log('creating vnode', props);
 	props = assign({}, props);
 
 	if (arguments.length>3) {

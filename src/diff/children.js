@@ -82,8 +82,20 @@ export function diffChildren(parentDom, newParentVNode, oldParentVNode, context,
 
 			oldVNode = oldVNode || EMPTY_OBJ;
 
+			if (childVNode && childVNode._depth === 18) {
+				console.log('oldDom', oldDom);
+				console.log('parentDom', parentDom);
+				console.log('childVNode', { ...childVNode });
+				console.log('oldVNode', { ...oldVNode });
+				console.log('excessDomChildren', [...excessDomChildren]);
+			}
+
 			// Morph the old element into the new one, but don't append it to the dom yet
 			newDom = diff(parentDom, childVNode, oldVNode, context, isSvg, excessDomChildren, mounts, null, oldDom, isHydrating);
+
+			if (childVNode && childVNode._depth === 18) {
+				console.log('newDom', newDom, oldDom);
+			}
 
 			if ((j = childVNode.ref) && oldVNode.ref != j) {
 				(refs || (refs=[])).push(j, childVNode._component || newDom, childVNode);
@@ -112,6 +124,7 @@ export function diffChildren(parentDom, newParentVNode, oldParentVNode, context,
 					// The values only have the same type when `null`.
 
 					outer: if (oldDom==null || oldDom.parentNode!==parentDom) {
+						console.warn('appending', parentDom, newDom);
 						parentDom.appendChild(newDom);
 					}
 					else {
@@ -152,7 +165,14 @@ export function diffChildren(parentDom, newParentVNode, oldParentVNode, context,
 		}
 	}
 
-	newParentVNode._dom = firstChildDom;
+	if (!firstChildDom) {
+		console.log(newParentVNode);
+		console.log(oldDom);
+		console.log(newDom);
+	}
+	if (firstChildDom !== undefined) {
+		newParentVNode._dom = firstChildDom;
+	}
 
 	// Remove children that are not part of any vnode.
 	if (excessDomChildren!=null && typeof newParentVNode.type !== 'function') for (i=excessDomChildren.length; i--; ) if (excessDomChildren[i]!=null) removeNode(excessDomChildren[i]);

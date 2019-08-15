@@ -68,6 +68,9 @@ Component.prototype.forceUpdate = function(callback) {
 		// shouldComponentUpdate
 		const force = callback!==false;
 
+		if (oldDom == null && vnode._depth > 16) {
+			console.log('hey', this);
+		}
 		let mounts = [];
 		let newDom = diff(parentDom, vnode, assign({}, vnode), this._context, parentDom.ownerSVGElement!==undefined, null, mounts, force, oldDom == null ? getDomSibling(vnode) : oldDom);
 		commitRoot(mounts, vnode);
@@ -96,6 +99,7 @@ Component.prototype.render = Fragment;
  * @param {number | null} [childIndex]
  */
 export function getDomSibling(vnode, childIndex) {
+	console.log('getting siblign for for ', vnode.type, childIndex);
 	if (childIndex == null) {
 		// Use childIndex==null as a signal to resume the search from the vnode's sibling
 		return vnode._parent
@@ -128,10 +132,12 @@ export function getDomSibling(vnode, childIndex) {
  */
 function updateParentDomPointers(vnode) {
 	if ((vnode = vnode._parent) != null && vnode._component != null) {
+		console.log(vnode.type, 'setting', vnode._dom, 'to', vnode._component.base);
 		vnode._dom = vnode._component.base = null;
 		for (let i = 0; i < vnode._children.length; i++) {
 			let child = vnode._children[i];
 			if (child != null && child._dom != null) {
+				console.log(vnode.type, 'setting', vnode._dom, 'to', child._dom, 'or', vnode._component.base);
 				vnode._dom = vnode._component.base = child._dom;
 				break;
 			}
