@@ -123,10 +123,10 @@ describe('Lifecycle methods', () => {
 			'outer getDerivedStateFromProps',
 			'outer shouldComponentUpdate',
 			'outer render',
-			'outer getSnapshotBeforeUpdate',
 			'inner getDerivedStateFromProps',
 			'inner shouldComponentUpdate',
 			'inner render',
+			'outer getSnapshotBeforeUpdate',
 			'inner getSnapshotBeforeUpdate',
 			'inner componentDidUpdate',
 			'outer componentDidUpdate'
@@ -140,10 +140,10 @@ describe('Lifecycle methods', () => {
 			'outer getDerivedStateFromProps',
 			'outer shouldComponentUpdate',
 			'outer render',
-			'outer getSnapshotBeforeUpdate',
 			'inner getDerivedStateFromProps',
 			'inner shouldComponentUpdate',
 			'inner render',
+			'outer getSnapshotBeforeUpdate',
 			'inner getSnapshotBeforeUpdate',
 			'inner componentDidUpdate',
 			'outer componentDidUpdate'
@@ -168,10 +168,10 @@ describe('Lifecycle methods', () => {
 		expect(log).to.deep.equal([
 			'outer getDerivedStateFromProps',
 			'outer render',
-			'outer getSnapshotBeforeUpdate',
 			'inner getDerivedStateFromProps',
 			'inner shouldComponentUpdate',
 			'inner render',
+			'outer getSnapshotBeforeUpdate',
 			'inner getSnapshotBeforeUpdate',
 			'inner componentDidUpdate',
 			'outer componentDidUpdate'
@@ -442,7 +442,7 @@ describe('Lifecycle methods', () => {
 	});
 
 	describe('Lifecycle DOM Timing', () => {
-		it('should be invoked when dom does (DidMount, WillUnmount) or does not (WillMount, DidUnmount) exist', () => {
+		it.only('should be invoked when dom does (DidMount, WillUnmount) or does not (WillMount, DidUnmount) exist', () => {
 			let setState;
 			class Outer extends Component {
 				constructor() {
@@ -483,6 +483,7 @@ describe('Lifecycle methods', () => {
 					expect(document.getElementById('InnerDiv'), 'Inner componentWillMount').to.not.exist;
 				}
 				componentDidMount() {
+					console.log(scratch.outerHTML);
 					expect(document.getElementById('InnerDiv'), 'Inner componentDidMount').to.exist;
 				}
 				componentWillUnmount() {
