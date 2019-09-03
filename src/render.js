@@ -2,7 +2,7 @@ import { EMPTY_OBJ, EMPTY_ARR } from './constants';
 import { createElement, Fragment } from './create-element';
 import options from './options';
 import renderTree from './diff/render-tree';
-import commit from './diff/commit';
+import commit, { commitRoot } from './diff/commit';
 
 const IS_HYDRATE = EMPTY_OBJ;
 
@@ -21,7 +21,7 @@ export function render(vnode, parentDom, replaceNode) {
 	let oldVNode = isHydrating ? null : replaceNode && replaceNode._children || parentDom._children;
 	vnode = createElement(Fragment, null, [vnode]);
 
-	let mounts = [];
+	let mounts = [], updates = [];
 
 	renderTree(
 		isHydrating ? parentDom._children = vnode : (replaceNode || parentDom)._children = vnode,
@@ -41,10 +41,11 @@ export function render(vnode, parentDom, replaceNode) {
 				? null
 				: EMPTY_ARR.slice.call(parentDom.childNodes),
 		mounts,
+		updates,
 		replaceNode || EMPTY_OBJ,
 		isHydrating,
 	);
-	// TODO: commitRoot(mounts, vnode);
+	commitRoot(mounts, updates, vnode);
 }
 
 /**

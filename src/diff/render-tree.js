@@ -19,6 +19,8 @@ export default function renderTree(
 	force,
 	context,
 ) {
+	console.log('context', context);
+	context = Object.freeze(context);
 	if (typeof newVNode === 'string' || typeof newVNode === 'number') {
 		return newVNode;
 	}
@@ -111,8 +113,8 @@ export default function renderTree(
 				// and use referential equality checks in commit to determine whether a node needs to be updated
 				if (
 					!force &&
-          c.shouldComponentUpdate != null &&
-          c.shouldComponentUpdate(newProps, c._nextState, cctx) === false
+					c.shouldComponentUpdate != null &&
+					c.shouldComponentUpdate(newProps, c._nextState, cctx) === false
 				) {
 
 					/*
@@ -145,7 +147,7 @@ export default function renderTree(
 			tmp = c.render(c.props, c.state, c.context);
 			let isTopLevelFragment = tmp != null && tmp.type == Fragment && tmp.key == null;
 			toChildArray(isTopLevelFragment ? tmp.props.children : tmp, newVNode._children=[], coerceToVNode, true);
-			renderChildren(newVNode, oldVNode);
+			renderChildren(newVNode, oldVNode, force, context);
 
 			if (c.getChildContext != null) {
 				context = assign(assign({}, context), c.getChildContext());
@@ -166,7 +168,7 @@ export default function renderTree(
 		}
 		else {
 			toChildArray(newVNode.props.children, newVNode._children = [], coerceToVNode, true);
-			renderChildren(newVNode, oldVNode);
+			renderChildren(newVNode, oldVNode, force, context);
 		}
 	}
 	catch (e) {
@@ -176,7 +178,7 @@ export default function renderTree(
 	return newVNode;
 }
 
-function renderChildren(newParentVNode, oldParentVNode, force) {
+function renderChildren(newParentVNode, oldParentVNode, force, context) {
 	let childVNode, i, j, oldVNode;
 
 	let newChildren = newParentVNode._children;

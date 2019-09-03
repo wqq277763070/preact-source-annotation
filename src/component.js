@@ -2,7 +2,7 @@ import { assign } from './util';
 import options from './options';
 import { Fragment } from './create-element';
 import renderTree from './diff/render-tree';
-import commit from './diff/commit';
+import commit, { commitRoot } from './diff/commit';
 
 /**
  * Base Component class. Provides `setState()` and `forceUpdate()`, which
@@ -69,7 +69,7 @@ Component.prototype.forceUpdate = function(callback) {
 		// shouldComponentUpdate
 		const force = callback!==false;
 
-		let mounts = [];
+		let mounts = [], updates = [];
 		const oldVNode = assign({}, vnode);
 		const newVNode = renderTree(vnode, oldVNode, force, this._context);
 		commit(
@@ -79,9 +79,11 @@ Component.prototype.forceUpdate = function(callback) {
 		  parentDom.ownerSVGElement !== undefined,
 		  null,
 		  mounts,
+		  updates,
 		  oldDom,
 		  false,
 		);
+		commitRoot(mounts, updates, newVNode);
 
 		if (vnode._dom != oldDom) {
 			updateParentDomPointers(vnode);

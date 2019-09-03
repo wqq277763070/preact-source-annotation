@@ -6,6 +6,35 @@ import { diffProps } from './props';
 import { getDomSibling } from '../component';
 
 /**
+ * 
+ * @param {Array<import('../internal').Component>} mounts
+ * @param {Array<{ _component: import('../internal').Component, _previousProps: any, _previousState: any, _snapshot: any }>} updates
+ * @param {any} root
+ */
+export function commitRoot(mounts, updates, root) {
+	let c;
+	while ((c = mounts.shift())) {
+		try {
+			c.componentDidMount();
+		}
+		catch (e) {
+			options._catchError(e, c._vnode);
+		}
+	}
+
+	while ((c = updates.shift())) {
+		try {
+			c._component.componentDidUpdate(c._previousProps, c._previousState, c._snapshot);
+		}
+		catch (e) {
+			options._catchError(e, c._component._vnode);
+		}
+	}
+
+	if (options._commit) options._commit(root);
+}
+
+/**
  * Commit a rendered tree
  * @param {import('../internal').PreactElement} parentDom DOM node to commit into
  * @param {import('../internal').VNode} newParentVNode VNode to commit
@@ -13,13 +42,15 @@ import { getDomSibling } from '../component';
  * @param {boolean} isSvg Whether or not this element is an SVG node
  * @param {Array<import('../internal').PreactElement>} excessDomChildren
  * @param {Array<import('../internal').Component>} mounts
+ * @param {Array<{ _component: import('../internal').Component, _previousProps: any, _previousState: any, _snapshot: any }>} updates
  * @param {Element | Text} oldDom The current attached DOM
  * element any new dom elements should be placed around. Likely `null` on first
  * render (except when hydrating). Can be a sibling DOM element when diffing
  * Fragments that have siblings. In most cases, it starts out as `oldChildren[0]._dom`.
  * @param {boolean} isHydrating Whether or not we are in hydration
  */
-export default function commit(parentDom, newParentVNode, oldParentVNode, isSvg, excessDomChildren, mounts, oldDom, isHydrating, callsite) {
+export default function commit(parentDom, newParentVNode, oldParentVNode, isSvg, excessDomChildren, mounts, updates, oldDom, isHydrating, callsite) {
+	// console.log('  '.repeat(newParentVNode._depth), 'commit', newParentVNode && newParentVNode.type && (newParentVNode.type.name || newParentVNode.type));
 	if (newParentVNode._component) {
 		newParentVNode._component._parentDom = parentDom;
 	}
@@ -49,11 +80,32 @@ export default function commit(parentDom, newParentVNode, oldParentVNode, isSvg,
 	}
   
 	if (
-		typeof newParentVNode.type === 'function' &&
-		!newParentVNode._component._isNew &&
-		newParentVNode._component.getSnapshotBeforeUpdate
+		typeof newParentVNode.type === 'function'
 	) {
-		snapshot = newParentVNode._component.getSnapshotBeforeUpdate(oldParentVNode.props);
+		if (newParentVNode._component._isNew) {
+			newParentVNode._component._isNew = false;
+
+			if (newParentVNode._component.componentDidMount) {
+				mounts.push(newParentVNode._component);
+			}
+		}
+		else {
+			// TODO: validate that if one of these two is given, both should be...
+			if (newParentVNode._component.getSnapshotBeforeUpdate) {
+				snapshot = newParentVNode._component.getSnapshotBeforeUpdate(oldParentVNode.props, oldParentVNode._component.state);
+			}
+
+			if (newParentVNode._component.componentDidUpdate) {
+				updates.push({
+					_component: newParentVNode._component,
+					// TODO: are these the correct props?
+					_previousProps: oldParentVNode.props,
+					// TODO: how to access previous state?
+					_previousState: oldParentVNode._component.state,
+					_snapshot: snapshot
+				});
+			}
+		}
 	}
 
 	for (i = 0; i < (newChildren ? newChildren.length : 0); i++) {
@@ -102,6 +154,7 @@ export default function commit(parentDom, newParentVNode, oldParentVNode, isSvg,
 			}
 			oldVNode = oldVNode || EMPTY_OBJ;
   
+			let newMounts = [], newUpdates = [];
 			if (typeof childVNode.type === 'function') {
 				// TODO: only proceed if we changed that vnode
 				commit(
@@ -110,7 +163,8 @@ export default function commit(parentDom, newParentVNode, oldParentVNode, isSvg,
 					oldVNode,
 					isSvg,
 					excessDomChildren,
-					mounts,
+					newMounts,
+					newUpdates,
 					oldDom,
 					isHydrating,
 					'function child'
@@ -125,13 +179,18 @@ export default function commit(parentDom, newParentVNode, oldParentVNode, isSvg,
 					oldVNode,
 					isSvg,
 					excessDomChildren,
-					mounts,
+					newMounts,
+					newUpdates,
 					isHydrating,
 					'string|null child'
 				);
 				// TODO: only append if not yet appended!
 			}
 
+			// miss-use of j for the sake of the bytes
+			while (j = newMounts.pop()) { mounts.push(j); }
+			while (j = newUpdates.pop()) { updates.push(j); }
+			
 			newDom = childVNode._dom;
   
 			if ((j = childVNode.ref) && oldVNode.ref != j) {
@@ -229,21 +288,6 @@ export default function commit(parentDom, newParentVNode, oldParentVNode, isSvg,
 			applyRef(refs[i], refs[++i], refs[++i]);
 		}
 	}
-  
-	if (
-		typeof newParentVNode.type === 'function'
-	) {
-		if (newParentVNode._component._isNew) {
-			newParentVNode._component._isNew = false;
-
-			newParentVNode._component.componentDidMount && newParentVNode._component.componentDidMount();
-		}
-		else if (newParentVNode._component.componentDidUpdate) {
-			// TODO: are these the correct props?
-			// TODO: how to access previous state?
-			newParentVNode._component.componentDidUpdate(oldVNode.props, {}, snapshot);
-		}
-	}
 }
 
 /**
@@ -256,6 +300,7 @@ export default function commit(parentDom, newParentVNode, oldParentVNode, isSvg,
  * @param {*} excessDomChildren
  * @param {Array<import('../internal').Component>} mounts An array of newly
  * mounted components
+ * @param {Array<{ _component: import('../internal').Component, _previousProps: any, _previousState: any, _snapshot: any }>} updates
  * @param {boolean} isHydrating Whether or not we are in hydration
  * @returns {import('../internal').PreactElement}
  */
@@ -266,6 +311,7 @@ function diffElementNodes(
 	isSvg,
 	excessDomChildren,
 	mounts,
+	updates,
 	isHydrating
 ) {
 	let i;
@@ -340,6 +386,7 @@ function diffElementNodes(
 				newVNode.type === 'foreignObject' ? false : isSvg,
 				excessDomChildren,
 				mounts,
+				updates,
 				EMPTY_OBJ,
 				isHydrating,
 				'diffElementNodes'
