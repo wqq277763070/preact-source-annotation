@@ -50,6 +50,10 @@ export function commitRoot(mounts, updates, root) {
  * @param {boolean} isHydrating Whether or not we are in hydration
  */
 export default function commit(parentDom, newParentVNode, oldParentVNode, isSvg, excessDomChildren, mounts, updates, oldDom, isHydrating, callsite) {
+	if (newParentVNode._shouldComponentUpdate === false) {
+		return;
+	}
+
 	// console.log('  '.repeat(newParentVNode._depth), 'commit', newParentVNode && newParentVNode.type && (newParentVNode.type.name || newParentVNode.type));
 	if (newParentVNode._component) {
 		newParentVNode._component._parentDom = parentDom;
@@ -82,7 +86,12 @@ export default function commit(parentDom, newParentVNode, oldParentVNode, isSvg,
 	if (
 		typeof newParentVNode.type === 'function'
 	) {
-		if (newParentVNode._component._isNew) {
+		// TODO (Sven): Get rid of this check
+		if (!newParentVNode._component) {
+			console.error(new Error('Missing _component on function vnode in commit'));
+			console.error(newParentVNode);
+		}
+		else if (newParentVNode._component._isNew) {
 			newParentVNode._component._isNew = false;
 
 			if (newParentVNode._component.componentDidMount) {
@@ -92,16 +101,14 @@ export default function commit(parentDom, newParentVNode, oldParentVNode, isSvg,
 		else {
 			// TODO: validate that if one of these two is given, both should be...
 			if (newParentVNode._component.getSnapshotBeforeUpdate) {
-				snapshot = newParentVNode._component.getSnapshotBeforeUpdate(oldParentVNode.props, oldParentVNode._component.state);
+				snapshot = newParentVNode._component.getSnapshotBeforeUpdate(oldParentVNode.props, oldParentVNode._component._previousState);
 			}
 
 			if (newParentVNode._component.componentDidUpdate) {
 				updates.push({
 					_component: newParentVNode._component,
-					// TODO: are these the correct props?
 					_previousProps: oldParentVNode.props,
-					// TODO: how to access previous state?
-					_previousState: oldParentVNode._component.state,
+					_previousState: oldParentVNode._component._previousState,
 					_snapshot: snapshot
 				});
 			}

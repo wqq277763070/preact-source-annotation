@@ -19,8 +19,6 @@ export default function renderTree(
 	force,
 	context,
 ) {
-	console.log('context', context);
-	context = Object.freeze(context);
 	if (typeof newVNode === 'string' || typeof newVNode === 'number') {
 		return newVNode;
 	}
@@ -101,8 +99,8 @@ export default function renderTree(
 				// -------- 3b. componentWillReceiveProps
 				if (
 					newType.getDerivedStateFromProps == null &&
-          force == null &&
-          c.componentWillReceiveProps != null
+					force == null &&
+					c.componentWillReceiveProps != null
 				) {
 					c.componentWillReceiveProps(newProps, cctx);
 				}
@@ -111,22 +109,16 @@ export default function renderTree(
 				// TODO: revisit this logic as we should not mess with _dom pointers inside renderTree()
 				// I guess it is a better approach to re-use the oldVNode as newVNode when sCU === false
 				// and use referential equality checks in commit to determine whether a node needs to be updated
-				if (
-					!force &&
-					c.shouldComponentUpdate != null &&
-					c.shouldComponentUpdate(newProps, c._nextState, cctx) === false
-				) {
+				newVNode._shouldComponentUpdate = !force && c.shouldComponentUpdate != null && c.shouldComponentUpdate(newProps, c._nextState, cctx) === false;
+				if (newVNode._shouldComponentUpdate) {
 
-					/*
-          c.props = newProps;
-          c.state = c._nextState;
-          c._dirty = false;
-          c._vnode = newVNode;
-          newVNode._dom = oldDom!=null ? oldVNode._dom : null;
-          newVNode._children = oldVNode._children;
-          break outer;
-          */
-					return oldVNode;
+					c.props = newProps;
+					c.state = c._nextState;
+					c._dirty = false;
+					c._vnode = newVNode;
+					newVNode._children = oldVNode._children;
+
+					return newVNode;
 				}
 
 				// -------- 5. componentWillUpdate
@@ -137,6 +129,7 @@ export default function renderTree(
 
 			c.context = cctx;
 			c.props = newProps;
+			c._previousState = c.state;
 			c.state = c._nextState;
 
 			if ((tmp = options._render)) tmp(newVNode);
@@ -147,7 +140,7 @@ export default function renderTree(
 			tmp = c.render(c.props, c.state, c.context);
 			let isTopLevelFragment = tmp != null && tmp.type == Fragment && tmp.key == null;
 			toChildArray(isTopLevelFragment ? tmp.props.children : tmp, newVNode._children=[], coerceToVNode, true);
-			renderChildren(newVNode, oldVNode, force, context);
+			renderChildren(newVNode, oldVNode, context);
 
 			if (c.getChildContext != null) {
 				context = assign(assign({}, context), c.getChildContext());
@@ -168,7 +161,7 @@ export default function renderTree(
 		}
 		else {
 			toChildArray(newVNode.props.children, newVNode._children = [], coerceToVNode, true);
-			renderChildren(newVNode, oldVNode, force, context);
+			renderChildren(newVNode, oldVNode, context);
 		}
 	}
 	catch (e) {
@@ -178,7 +171,7 @@ export default function renderTree(
 	return newVNode;
 }
 
-function renderChildren(newParentVNode, oldParentVNode, force, context) {
+function renderChildren(newParentVNode, oldParentVNode, context) {
 	let childVNode, i, j, oldVNode;
 
 	let newChildren = newParentVNode._children;
@@ -226,7 +219,7 @@ function renderChildren(newParentVNode, oldParentVNode, force, context) {
 			oldVNode = oldVNode || EMPTY_OBJ;
 
 			// Morph the old element into the new one, but don't append it to the dom yet
-			renderTree(childVNode, oldVNode, force, context);
+			renderTree(childVNode, oldVNode, null, context);
 		}
 	}
 }
