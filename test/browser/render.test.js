@@ -422,6 +422,20 @@ describe('render()', () => {
 			}
 		});
 
+		it('should support opacity 0', () => {
+			render(<div style={{ opacity: 1 }}>Test</div>, scratch);
+			let style = scratch.firstChild.style;
+			expect(style)
+				.to.have.property('opacity')
+				.that.equals('1');
+
+			render(<div style={{ opacity: 0 }}>Test</div>, scratch);
+			style = scratch.firstChild.style;
+			expect(style)
+				.to.have.property('opacity')
+				.that.equals('0');
+		});
+
 		it('should replace previous style objects', () => {
 			render(<div style={{ display: 'inline' }}>test</div>, scratch);
 
@@ -915,6 +929,7 @@ describe('render()', () => {
 		checkbox.checked = false;
 
 		inputs.forceUpdate();
+		rerender();
 
 		expect(text.value).to.equal('Hello');
 		expect(checkbox.checked).to.equal(true);
@@ -974,8 +989,11 @@ describe('render()', () => {
 		render(<App />, scratch);
 
 		updateApp();
+		rerender();
 		updateParent();
+		rerender();
 		updateApp();
+		rerender();
 
 		// Without a fix it would render: `<div>foo</div><div></div>`
 		expect(scratch.innerHTML).to.equal('<div>foo</div>');
