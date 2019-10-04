@@ -31,6 +31,12 @@ function getHookState(index) {
 }
 
 
+/**
+ * @param {import('./index').Reducer<any, any>} reducer
+ * @param {import('./index').StateUpdater<any>} initialState
+ * @param {(initialState: any) => void} init
+ * @returns {[ any, (state: any) => void ]}
+ */
 export function useReducer(reducer, initialState, init) {
 
 	/** @type {import('./internal').ReducerHookState} */
@@ -54,6 +60,7 @@ export function useReducer(reducer, initialState, init) {
 	return hookState._value;
 }
 
+/** @type {typeof import('./index').useState} */
 export const useState = useReducer.bind(undefined, invokeOrReturn);
 
 /**
@@ -205,6 +212,9 @@ if (typeof window !== 'undefined') {
 	};
 }
 
+/**
+ * @param {import('./internal').EffectHookState[]} effects
+ */
 export function handleEffects(effects) {
 	effects.some(h => {
 		h._cleanup && h._cleanup();
@@ -216,6 +226,10 @@ export function handleEffects(effects) {
 	return [];
 }
 
+/**
+ * @param {any[]} oldArgs
+ * @param {any[]} newArgs
+ */
 function argsChanged(oldArgs, newArgs) {
 	return !oldArgs || newArgs.some((arg, index) => arg !== oldArgs[index]);
 }
