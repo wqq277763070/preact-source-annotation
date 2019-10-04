@@ -1,25 +1,26 @@
 /**
- * Flatten a virtual nodes children to a single dimensional array
+ * Flatten and loop through the children of a virtual node
  * @param {import('../index').ComponentChildren} children The unflattened
  * children of a virtual node
- * @param {Array<import('../internal').VNode | null>} [flattened] An flat array of children to modify
- * @param {typeof import('../create-element').coerceToVNode} [map] Function that
- * will be applied on each child if the `vnode` is not `null`
- * @param {boolean} [keepHoles] wether to coerce `undefined` to `null` or not.
- * This is needed for Components without children like `<Foo />`.
+ * @param {(vnode: import('../internal').VNode) => import('../internal').VNode} [callback]
+ * A function to invoke for each child before it is added to the flattened list.
+ * @param {import('../internal').VNode[]} [flattened] An flat array of children to modify
+ * @returns {import('../internal').VNode[]}
  */
-export function toChildArray(children, flattened, map, keepHoles) {
+export function toChildArray(children, callback, flattened) {
 	if (flattened == null) flattened = [];
+
 	if (children==null || typeof children === 'boolean') {
-		if (keepHoles) flattened.push(null);
+		if (callback) flattened.push(callback(null));
 	}
 	else if (Array.isArray(children)) {
 		for (let i=0; i < children.length; i++) {
-			toChildArray(children[i], flattened, map, keepHoles);
+			toChildArray(children[i], callback, flattened);
 		}
 	}
 	else {
-		flattened.push(map ? map(children) : children);
+		// TODO: we dropped a coerceToVNode here...
+		flattened.push(callback ? callback((children)) : children);
 	}
 
 	return flattened;

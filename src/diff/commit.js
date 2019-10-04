@@ -50,11 +50,14 @@ export function commitRoot(mounts, updates, root) {
  * @param {boolean} isHydrating Whether or not we are in hydration
  */
 export default function commit(parentDom, newParentVNode, oldParentVNode, isSvg, excessDomChildren, mounts, updates, oldDom, isHydrating, callsite) {
-	if (newParentVNode._shouldComponentUpdate === false) {
+	// TODO: get rid of this flag. We might be able to replace it with an equality check (newParentVNode == oldParentVNode)
+	// if (newParentVNode._shouldComponentUpdate === false) {
+	// 	return;
+	// }
+	if (newParentVNode === oldParentVNode) {
 		return;
 	}
 
-	// console.log('  '.repeat(newParentVNode._depth), 'commit', newParentVNode && newParentVNode.type && (newParentVNode.type.name || newParentVNode.type));
 	if (newParentVNode._component) {
 		newParentVNode._component._parentDom = parentDom;
 	}

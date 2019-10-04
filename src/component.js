@@ -130,7 +130,7 @@ function renderComponent(component) {
 	if (parentDom) {
 		let mounts = [], updates = [];
 		const oldVNode = assign({}, vnode);
-		const newVNode = renderTree(vnode, oldVNode, force, this._context);
+		const newVNode = renderTree(vnode, oldVNode, force, component._context);
 		commit(parentDom, newVNode, oldVNode, parentDom.ownerSVGElement !== undefined, null, mounts, updates, oldDom, false);
 		commitRoot(mounts, updates, newVNode);
 

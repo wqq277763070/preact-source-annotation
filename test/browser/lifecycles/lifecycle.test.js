@@ -25,7 +25,7 @@ describe('Lifecycle methods', () => {
 		return arr.map(o => typeof o === 'object' ? Object.freeze(o) : o);
 	}
 
-	it.only('should call nested new lifecycle methods in the right order', () => {
+	it('should call nested new lifecycle methods in the right order', () => {
 		let updateOuterState;
 		let updateInnerState;
 		let forceUpdateOuter;

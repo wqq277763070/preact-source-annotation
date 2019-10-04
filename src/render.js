@@ -23,7 +23,7 @@ export function render(vnode, parentDom, replaceNode) {
 
 	let mounts = [], updates = [];
 
-	renderTree(
+	const tree = renderTree(
 		isHydrating ? parentDom._children = vnode : (replaceNode || parentDom)._children = vnode,
 		oldVNode || EMPTY_OBJ,
 		false,
@@ -32,7 +32,7 @@ export function render(vnode, parentDom, replaceNode) {
 
 	commit(
 		parentDom,
-		vnode,
+		tree,
 		oldVNode || EMPTY_OBJ,
 		parentDom.ownerSVGElement !== undefined,
 		replaceNode && !isHydrating
