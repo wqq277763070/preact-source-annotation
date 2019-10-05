@@ -1616,7 +1616,7 @@ describe('Components', () => {
 		expect(unmounted).to.equal(',0,1,2,3');
 	});
 
-	describe('c.base', () => {
+	xdescribe('c.base', () => {
 		/* eslint-disable lines-around-comment */
 		/** @type {import('../../src').Component} */
 		let parentDom1;
