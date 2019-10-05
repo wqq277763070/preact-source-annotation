@@ -54,7 +54,7 @@ export default function commit(parentDom, newParentVNode, oldParentVNode, isSvg,
 	// if (newParentVNode._shouldComponentUpdate === false) {
 	// 	return;
 	// }
-	if (newParentVNode === oldParentVNode) {
+	if (newParentVNode._shouldComponentUpdate === false) {
 		return;
 	}
 

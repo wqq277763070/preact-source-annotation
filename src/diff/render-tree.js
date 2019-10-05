@@ -23,8 +23,6 @@ export default function renderTree(
 		return newVNode;
 	}
 
-	newVNode._used = true;
-
 	let tmp,
 		newType = newVNode.type;
 
@@ -33,6 +31,8 @@ export default function renderTree(
 
 	// TODO: revisit options callback
 	if ((tmp = options._diff)) tmp(newVNode);
+
+	newVNode._used = true;
 
 	try {
 		if (typeof newType === 'function') {
@@ -97,8 +97,8 @@ export default function renderTree(
 				}
 
 				// -------- 4. shouldComponentUpdate
-				newVNode._shouldComponentUpdate = !force && c.shouldComponentUpdate!=null && c.shouldComponentUpdate(newProps, c._nextState, cctx)===false;
-				if (newVNode._shouldComponentUpdate) {
+				newVNode._shouldComponentUpdate = force || c.shouldComponentUpdate==null || c.shouldComponentUpdate(newProps, c._nextState, cctx)!==false;
+				if (!newVNode._shouldComponentUpdate) {
 					c.props = newProps;
 					c.state = c._nextState;
 					c._dirty = false;
