@@ -230,12 +230,12 @@ export default function commit(parentDom, newParentVNode, oldParentVNode, isSvg,
 				}
 				else if (
 					excessDomChildren == oldVNode ||
-				newDom != oldDom ||
-				newDom.parentNode == null
+					newDom != oldDom ||
+					newDom.parentNode == null
 				) {
-				// NOTE: excessDomChildren==oldVNode above:
-				// This is a compression of excessDomChildren==null && oldVNode==null!
-				// The values only have the same type when `null`.
+					// NOTE: excessDomChildren==oldVNode above:
+					// This is a compression of excessDomChildren==null && oldVNode==null!
+					// The values only have the same type when `null`.
 					outer: if (oldDom == null || oldDom.parentNode !== parentDom) {
 						parentDom.appendChild(newDom);
 					}
