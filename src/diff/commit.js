@@ -104,7 +104,12 @@ export default function commit(parentDom, newParentVNode, oldParentVNode, isSvg,
 		else {
 			// TODO: validate that if one of these two is given, both should be...
 			if (newParentVNode._component.getSnapshotBeforeUpdate) {
-				snapshot = newParentVNode._component.getSnapshotBeforeUpdate(oldParentVNode.props, oldParentVNode._component._previousState);
+				try {
+					snapshot = newParentVNode._component.getSnapshotBeforeUpdate(oldParentVNode.props, oldParentVNode._component._previousState);
+				}
+				catch (e) {
+					options._catchError(e, newParentVNode, oldParentVNode);
+				}
 			}
 
 			if (newParentVNode._component.componentDidUpdate) {
