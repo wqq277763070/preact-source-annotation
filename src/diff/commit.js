@@ -85,38 +85,6 @@ export default function commit(parentDom, newParentVNode, oldParentVNode, isSvg,
 			oldDom = null;
 		}
 	}
-  
-	if (
-		typeof newParentVNode.type === 'function'
-	) {
-		// TODO (Sven): Get rid of this check
-		if (!newParentVNode._component) {
-			console.error(new Error('Missing _component on function vnode in commit'));
-			console.error(newParentVNode);
-		}
-		else if (newParentVNode._component._isNew) {
-			newParentVNode._component._isNew = false;
-
-			if (newParentVNode._component.componentDidMount) {
-				mounts.push(newParentVNode._component);
-			}
-		}
-		else {
-			// TODO: validate that if one of these two is given, both should be...
-			if (newParentVNode._component.getSnapshotBeforeUpdate) {
-				snapshot = newParentVNode._component.getSnapshotBeforeUpdate(oldParentVNode.props, oldParentVNode._component._previousState);
-			}
-
-			if (newParentVNode._component.componentDidUpdate) {
-				updates.push({
-					_component: newParentVNode._component,
-					_previousProps: oldParentVNode.props,
-					_previousState: oldParentVNode._component._previousState,
-					_snapshot: snapshot
-				});
-			}
-		}
-	}
 
 	for (i = 0; i < (newChildren ? newChildren.length : 0); i++) {
 		childVNode = newChildren[i] = coerceToVNode(newChildren[i], false);
@@ -164,7 +132,6 @@ export default function commit(parentDom, newParentVNode, oldParentVNode, isSvg,
 			}
 			oldVNode = oldVNode || EMPTY_OBJ;
   
-			let newMounts = [], newUpdates = [];
 			if (typeof childVNode.type === 'function') {
 				// TODO: only proceed if we changed that vnode
 				commit(
@@ -173,8 +140,8 @@ export default function commit(parentDom, newParentVNode, oldParentVNode, isSvg,
 					oldVNode,
 					isSvg,
 					excessDomChildren,
-					newMounts,
-					newUpdates,
+					mounts,
+					updates,
 					oldDom,
 					isHydrating,
 					'function child'
@@ -189,17 +156,13 @@ export default function commit(parentDom, newParentVNode, oldParentVNode, isSvg,
 					oldVNode,
 					isSvg,
 					excessDomChildren,
-					newMounts,
-					newUpdates,
+					mounts,
+					updates,
 					isHydrating,
 					'string|null child'
 				);
 				// TODO: only append if not yet appended!
 			}
-
-			// miss-use of j for the sake of the bytes
-			while (j = newMounts.pop()) { mounts.push(j); }
-			while (j = newUpdates.pop()) { updates.push(j); }
 			
 			newDom = childVNode._dom;
   
@@ -301,6 +264,38 @@ export default function commit(parentDom, newParentVNode, oldParentVNode, isSvg,
 
 	if (options.committed) {
 		options.committed(newParentVNode, mounts);
+	}
+
+	if (
+		typeof newParentVNode.type === 'function'
+	) {
+		// TODO (Sven): Get rid of this check
+		if (!newParentVNode._component) {
+			console.error(new Error('Missing _component on function vnode in commit'));
+			console.error(newParentVNode);
+		}
+		else if (newParentVNode._component._isNew) {
+			newParentVNode._component._isNew = false;
+
+			if (newParentVNode._component.componentDidMount) {
+				mounts.push(newParentVNode._component);
+			}
+		}
+		else {
+			// TODO: validate that if one of these two is given, both should be...
+			if (newParentVNode._component.getSnapshotBeforeUpdate) {
+				snapshot = newParentVNode._component.getSnapshotBeforeUpdate(oldParentVNode.props, oldParentVNode._component._previousState);
+			}
+
+			if (newParentVNode._component.componentDidUpdate) {
+				updates.push({
+					_component: newParentVNode._component,
+					_previousProps: oldParentVNode.props,
+					_previousState: oldParentVNode._component._previousState,
+					_snapshot: snapshot
+				});
+			}
+		}
 	}
 }
 
