@@ -31,7 +31,21 @@ options.diffed = vnode => {
 	const hooks = c.__hooks;
 	if (hooks) {
 		hooks._handles = bindHandles(hooks._handles);
-		hooks._pendingLayoutEffects = handleEffects(hooks._pendingLayoutEffects);
+	}
+};
+
+let oldCommitted = options.committed;
+options.committed = (component, mounts) => {
+	if (oldCommitted) oldCommitted(component, mounts);
+
+	const hooks = component.__hooks;
+	if (hooks) {
+		// TODO: very nasty mis-use of the mountes here...
+		mounts.push({
+			componentDidMount() {
+				hooks._pendingLayoutEffects = handleEffects(hooks._pendingLayoutEffects);
+			}
+		});
 	}
 };
 
