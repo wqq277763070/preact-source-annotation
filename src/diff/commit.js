@@ -116,9 +116,6 @@ export default function commit(parentDom, newParentVNode, oldParentVNode, isSvg,
 				});
 			}
 		}
-		if (options.committed) {
-			options.committed(newParentVNode._component, mounts);
-		}
 	}
 
 	for (i = 0; i < (newChildren ? newChildren.length : 0); i++) {
@@ -300,6 +297,10 @@ export default function commit(parentDom, newParentVNode, oldParentVNode, isSvg,
 		for (i = 0; i < refs.length; i++) {
 			applyRef(refs[i], refs[++i], refs[++i]);
 		}
+	}
+
+	if (options.committed) {
+		options.committed(newParentVNode, mounts);
 	}
 }
 
