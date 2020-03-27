@@ -69,8 +69,6 @@ Component.prototype.setState = function(update, callback) {
 	if (update == null) return;
 
 	if (this._vnode) {
-		//标记不是强制更新
-		this._force = false;
 		//有回调把回调加入回调数组里
 		if (callback) this._renderCallbacks.push(callback);
 		//加入渲染队列并渲染
@@ -144,7 +142,7 @@ export function getDomSibling(vnode, childIndex) {
 	// VNode (meaning we reached the DOM parent of the original vnode that began
 	// the search)
 	//没有找到并且虚拟节点类型为函数则调用getDomSibling(vnode),此时Index为null,执行此函数第一行代码      其它则返回null
-	return typeof vnode.type === 'function' ? getDomSibling(vnode) : null;
+	return typeof vnode.type == 'function' ? getDomSibling(vnode) : null;
 }
 
 /**
@@ -164,7 +162,7 @@ function renderComponent(component) {
 			parentDom,
 			vnode,
 			assign({}, vnode),
-			component._context,
+			component._globalContext,
 			parentDom.ownerSVGElement !== undefined,
 			null,
 			commitQueue,
@@ -205,8 +203,10 @@ function updateParentDomPointers(vnode) {
  * The render queue
  * @type {Array<import('./internal').Component>}
  */
-//待渲染组件列表
-let q = [];
+//待渲染组件队列
+let rerenderQueue = [];
+//渲染次数统计
+let rerenderCount = 0;
 
 /**
  * Asynchronously schedule a callback
@@ -242,7 +242,10 @@ export function enqueueRender(c) {
 	//然后把组件加入队列中
 	//如果队列长度为1或者重新设置过debounceRendering钩子则延迟渲染
 	if (
-		(!c._dirty && (c._dirty = true) && q.push(c) === 1) ||
+		(!c._dirty &&
+			(c._dirty = true) &&
+			rerenderQueue.push(c) &&
+			!rerenderCount++) ||
 		prevDebounce !== options.debounceRendering
 	) {
 		prevDebounce = options.debounceRendering;
@@ -254,12 +257,16 @@ export function enqueueRender(c) {
 /** Flush the render queue by rerendering all queued components */
 //遍历队列渲染组件
 function process() {
-	let p;
-	//按深度排序 最顶级的组件的最先执行
-	q.sort((a, b) => b._vnode._depth - a._vnode._depth);
-	while ((p = q.pop())) {
-		// forceUpdate's callback argument is reused here to indicate a non-forced update.
-		//如果组件需要渲染则渲染它
-		if (p._dirty) renderComponent(p);
+	let queue;
+	while ((rerenderCount = rerenderQueue.length)) {
+		//按深度排序 最顶级的组件的最先执行
+		queue = rerenderQueue.sort((a, b) => a._vnode._depth - b._vnode._depth);
+		rerenderQueue = [];
+		// Don't update `renderCount` yet. Keep its value non-zero to prevent unnecessary
+		// process() calls from getting scheduled while `queue` is still being consumed.
+		queue.some(c => {
+			//如果组件需要渲染则渲染它
+			if (c._dirty) renderComponent(c);
+		});
 	}
 }

@@ -10,7 +10,7 @@ import { enqueueRender } from '../component';
 //处理虚拟节点错误
 export function _catchError(error, vnode) {
 	/** @type {import('../internal').Component} */
-	let component;
+	let component, hasCaught;
 	//不断向上循环父组件
 	for (; (vnode = vnode._parent); ) {
 		//这儿是有父组件并且该父组件不是异常
@@ -22,19 +22,22 @@ export function _catchError(error, vnode) {
 					component.constructor &&
 					component.constructor.getDerivedStateFromError != null
 				) {
+					hasCaught = true;
 					component.setState(
 						component.constructor.getDerivedStateFromError(error)
 					);
-					//如果设置了componentDidCatch，则执行componentDidCatch
-				} else if (component.componentDidCatch != null) {
-					component.componentDidCatch(error);
-					//没有以上设置再继续循环他的父组件
-				} else {
-					continue;
 				}
+
+				//如果设置了componentDidCatch，则执行componentDidCatch
+				if (component.componentDidCatch != null) {
+					hasCaught = true;
+					component.componentDidCatch(error);
+				}
+
 				//再去渲染处理error的组件
 				//为什么又去渲染了这个组件呢,见README.md解惑疑点5
-				return enqueueRender((component._pendingError = component));
+				if (hasCaught)
+					return enqueueRender((component._pendingError = component));
 			} catch (e) {
 				error = e;
 			}

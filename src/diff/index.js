@@ -1,7 +1,7 @@
 import { EMPTY_OBJ, EMPTY_ARR } from '../constants';
 import { Component } from '../component';
 import { Fragment } from '../create-element';
-import { diffChildren, toChildArray } from './children';
+import { diffChildren } from './children';
 import { diffProps } from './props';
 import { assign, removeNode } from '../util';
 import options from '../options';
@@ -11,7 +11,7 @@ import options from '../options';
  * @param {import('../internal').PreactElement} parentDom The parent of the DOM element
  * @param {import('../internal').VNode} newVNode The new virtual node
  * @param {import('../internal').VNode} oldVNode The old virtual node
- * @param {object} context The current context object
+ * @param {object} globalContext The current context object. Modified by getChildContext
  * @param {boolean} isSvg Whether or not this element is an SVG node
  * @param {Array<import('../internal').PreactElement>} excessDomChildren
  * @param {Array<import('../internal').Component>} commitQueue List of components
@@ -36,7 +36,7 @@ export function diff(
 	parentDom,
 	newVNode,
 	oldVNode,
-	context,
+	globalContext,
 	isSvg,
 	excessDomChildren,
 	commitQueue,
@@ -55,7 +55,7 @@ export function diff(
 
 	try {
 		//如果是类组件或者函数组件
-		outer: if (typeof newType === 'function') {
+		outer: if (typeof newType == 'function') {
 			let c, isNew, oldProps, oldState, snapshot, clearProcessingException;
 			let newProps = newVNode.props;
 
@@ -63,14 +63,14 @@ export function diff(
 			// the context value as `this.context` just for this component.
 			tmp = newType.contextType;
 			//找到祖先的provider
-			let provider = tmp && context[tmp._id];
+			let provider = tmp && globalContext[tmp._id];
 			//有tmp时，如果提供provider时为provider的value，不然为createContext的defaultValue
 			//没有则为父节点传递下来的context
-			let cctx = tmp
+			let componentContext = tmp
 				? provider
 					? provider.props.value
 					: tmp._defaultValue
-				: context;
+				: globalContext;
 			// Get component and set it to `c`
 			//如果已经存在实例化的组件
 			if (oldVNode._component) {
@@ -81,10 +81,10 @@ export function diff(
 				// Instantiate the new component
 				if ('prototype' in newType && newType.prototype.render) {
 					//类组件的话  去实例化
-					newVNode._component = c = new newType(newProps, cctx); // eslint-disable-line new-cap
+					newVNode._component = c = new newType(newProps, componentContext); // eslint-disable-line new-cap
 				} else {
 					//函数组件的话会实例化Component
-					newVNode._component = c = new Component(newProps, cctx);
+					newVNode._component = c = new Component(newProps, componentContext);
 					c.constructor = newType;
 					//设置render
 					c.render = doRender;
@@ -94,10 +94,10 @@ export function diff(
 
 				c.props = newProps;
 				if (!c.state) c.state = {};
-				c.context = cctx;
+				c.context = componentContext;
 				//至于还要用c._context不用c.context
 				//由于context有可能为provider的value
-				c._context = context;
+				c._globalContext = globalContext;
 				//标记需要渲染并且是新创建的组件
 				isNew = c._dirty = true;
 				c._renderCallbacks = [];
@@ -142,16 +142,17 @@ export function diff(
 				//没有设置getDerivedStateFromProps并且不是forceUpdate并且设置了componentWillReceiveProps则执行此生命周期
 				if (
 					newType.getDerivedStateFromProps == null &&
-					c._force == null &&
+					newProps !== oldProps &&
 					c.componentWillReceiveProps != null
 				) {
-					c.componentWillReceiveProps(newProps, cctx);
+					c.componentWillReceiveProps(newProps, componentContext);
 				}
 				//如果不是forceUpdate并且shouldComponentUpdate则执行此生命周期返回false的情况下
 				if (
 					!c._force &&
 					c.shouldComponentUpdate != null &&
-					c.shouldComponentUpdate(newProps, c._nextState, cctx) === false
+					c.shouldComponentUpdate(newProps, c._nextState, componentContext) ===
+						false
 				) {
 					c.props = newProps;
 					c.state = c._nextState;
@@ -176,7 +177,7 @@ export function diff(
 				}
 				//如果设置了componentWillUpdate则执行此生命周期
 				if (c.componentWillUpdate != null) {
-					c.componentWillUpdate(newProps, c._nextState, cctx);
+					c.componentWillUpdate(newProps, c._nextState, componentContext);
 				}
 				//如果componentDidUpdate不为空则放到_renderCallbacks中
 				if (c.componentDidUpdate != null) {
@@ -186,7 +187,7 @@ export function diff(
 				}
 			}
 
-			c.context = cctx;
+			c.context = componentContext;
 			c.props = newProps;
 			c.state = c._nextState;
 			//render钩子
@@ -201,12 +202,14 @@ export function diff(
 			let isTopLevelFragment =
 				tmp != null && tmp.type == Fragment && tmp.key == null;
 			//Fragment组件则使用props.children，其它使用render返回的
-			newVNode._children = toChildArray(
-				isTopLevelFragment ? tmp.props.children : tmp
-			);
+			newVNode._children = isTopLevelFragment
+				? tmp.props.children
+				: Array.isArray(tmp)
+				? tmp
+				: [tmp];
 			//如果是Provider组件，然后调用getChildContext获取ctx对象并向下传递
 			if (c.getChildContext != null) {
-				context = assign(assign({}, context), c.getChildContext());
+				globalContext = assign(assign({}, globalContext), c.getChildContext());
 			}
 			//执行getSnapshotBeforeUpdate生命周期
 			if (!isNew && c.getSnapshotBeforeUpdate != null) {
@@ -217,7 +220,7 @@ export function diff(
 				parentDom,
 				newVNode,
 				oldVNode,
-				context,
+				globalContext,
 				isSvg,
 				excessDomChildren,
 				commitQueue,
@@ -235,14 +238,14 @@ export function diff(
 				c._pendingError = c._processingException = null;
 			}
 			//设置强制更新为false
-			c._force = null;
+			c._force = false;
 		} else {
 			//其它类型调用diffElementNodes去比较
 			newVNode._dom = diffElementNodes(
 				oldVNode._dom,
 				newVNode,
 				oldVNode,
-				context,
+				globalContext,
 				isSvg,
 				excessDomChildren,
 				commitQueue,
@@ -289,7 +292,7 @@ export function commitRoot(commitQueue, root) {
  * the virtual nodes being diffed
  * @param {import('../internal').VNode} newVNode The new virtual node
  * @param {import('../internal').VNode} oldVNode The old virtual node
- * @param {object} context The current context object
+ * @param {object} globalContext The current context object
  * @param {boolean} isSvg Whether or not this DOM node is an SVG node
  * @param {*} excessDomChildren
  * @param {Array<import('../internal').Component>} commitQueue List of components
@@ -302,7 +305,7 @@ function diffElementNodes(
 	dom,
 	newVNode,
 	oldVNode,
-	context,
+	globalContext,
 	isSvg,
 	excessDomChildren,
 	commitQueue,
@@ -316,15 +319,20 @@ function diffElementNodes(
 	//判断是否是svg
 	isSvg = newVNode.type === 'svg' || isSvg;
 	//判断能否复用excessDomChildren中的dom
-	if (dom == null && excessDomChildren != null) {
+	if (excessDomChildren != null) {
 		for (i = 0; i < excessDomChildren.length; i++) {
 			const child = excessDomChildren[i];
+			// if newVNode matches an element in excessDomChildren or the `dom`
+			// argument matches an element in excessDomChildren, remove it from
+			// excessDomChildren so it isn't later removed in diffChildren
 			//如果虚拟节点类型为null而存在节点类型是text或者虚拟节点类型和存在节点类型相同，则复用
+			//todo 3
 			if (
 				child != null &&
-				(newVNode.type === null
+				((newVNode.type === null
 					? child.nodeType === 3
-					: child.localName === newVNode.type)
+					: child.localName === newVNode.type) ||
+					dom == child)
 			) {
 				dom = child;
 				//设置对应的存在节点为空
@@ -342,20 +350,20 @@ function diffElementNodes(
 		//创建元素
 		dom = isSvg
 			? document.createElementNS('http://www.w3.org/2000/svg', newVNode.type)
-			: document.createElement(newVNode.type);
+			//todo 2
+			: document.createElement(
+					newVNode.type,
+					newProps.is && { is: newProps.is }
+			  );
 		// we created a new parent, so none of the previously attached children can be reused:
 		//以下流程中 excessDomChildren表示dom的子节点,这儿的dom是新创建的,所以要设为null,表示不可复用子节点
 		excessDomChildren = null;
 	}
 	//如果是text节点
 	if (newVNode.type === null) {
-		//如果diffElementNodes传进来dom就不为空,则将excessDomChildren对应的节点设为null
-		//见README.md解惑疑点9
-		if (excessDomChildren != null) {
-			excessDomChildren[excessDomChildren.indexOf(dom)] = null;
-		}
+		//todo 3
 		//如果两者不相等,则设置data来更新TextNode的文本
-		if (oldProps !== newProps) {
+		if (oldProps !== newProps && dom.data != newProps) {
 			dom.data = newProps;
 		}
 	}
@@ -412,7 +420,7 @@ function diffElementNodes(
 				dom,
 				newVNode,
 				oldVNode,
-				context,
+				globalContext,
 				newVNode.type === 'foreignObject' ? false : isSvg,
 				excessDomChildren,
 				commitQueue,
@@ -481,19 +489,22 @@ export function unmount(vnode, parentVNode, skipRemove) {
 	let r;
 	//unmount钩子
 	if (options.unmount) options.unmount(vnode);
-	//如果有ref则将ref设置为null
+
 	if ((r = vnode.ref)) {
-		applyRef(r, null, parentVNode);
+		if (!r.current || r.current === vnode._dom) applyRef(r, null, parentVNode);
 	}
 
 	let dom;
 	//如果虚拟节点类型不是函数并且skipRemove为false 则赋值到dom方便后面移除节点
 	//skipRemove的作用是在后面递归循环子节点unmount时不会执行removeNode
-	if (!skipRemove && typeof vnode.type !== 'function') {
+	if (!skipRemove && typeof vnode.type != 'function') {
 		skipRemove = (dom = vnode._dom) != null;
 	}
-	//dom设置为空
-	vnode._dom = vnode._lastDomChild = null;
+
+	// Must be set to `undefined` to properly clean up `_nextDom`
+	// for which `null` is a valid value. See comment in `create-element.js`
+	//todo 1
+	vnode._dom = vnode._nextDom = undefined;
 
 	if ((r = vnode._component) != null) {
 		//执行组件生命周期

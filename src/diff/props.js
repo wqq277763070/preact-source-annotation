@@ -39,7 +39,7 @@ function setStyle(style, key, value) {
 		style.setProperty(key, value);
 		//如果value为数字并且key是尺寸类型则值自动加px
 	} else if (
-		typeof value === 'number' &&
+		typeof value == 'number' &&
 		IS_NON_DIMENSIONAL.test(key) === false
 	) {
 		style[key] = value + 'px';
@@ -75,11 +75,11 @@ function setProperty(dom, name, value, oldValue, isSvg) {
 	} else if (name === 'style') {
 		const s = dom.style;
 		//value为字符串直接使用cssText设置
-		if (typeof value === 'string') {
+		if (typeof value == 'string') {
 			s.cssText = value;
 		} else {
 			//老值为字符串时cssText设为空
-			if (typeof oldValue === 'string') {
+			if (typeof oldValue == 'string') {
 				s.cssText = '';
 				//标记防止再执行下面将老值中的属性设为空
 				oldValue = null;
@@ -122,7 +122,7 @@ function setProperty(dom, name, value, oldValue, isSvg) {
 			dom.removeEventListener(name, eventProxy, useCapture);
 		}
 	}
-	//属性名不为list tabName form 并且非svg 属性名在dom中    直接用dom设置
+	//属性名不为list，tabName等并且非svg 属性名在dom中    直接用dom设置
 	else if (
 		name !== 'list' &&
 		name !== 'tagName' &&
@@ -130,15 +130,13 @@ function setProperty(dom, name, value, oldValue, isSvg) {
 		// setAttribute
 		name !== 'form' &&
 		name !== 'type' &&
+		name !== 'size' &&
 		!isSvg &&
 		name in dom
 	) {
 		dom[name] = value == null ? '' : value;
 		//如果属性值不为函数并且属性名不为dangerouslySetInnerHTML
-	} else if (
-		typeof value !== 'function' &&
-		name !== 'dangerouslySetInnerHTML'
-	) {
+	} else if (typeof value != 'function' && name !== 'dangerouslySetInnerHTML') {
 		//属性名中有xlink通过setAttributeNS removeAttributeNS设置
 		if (name !== (name = name.replace(/^xlink:?/, ''))) {
 			if (value == null || value === false) {
@@ -154,8 +152,18 @@ function setProperty(dom, name, value, oldValue, isSvg) {
 				);
 			}
 		}
-		//值为null或这false则移除属性
-		else if (value == null || value === false) {
+		//值为null或者 为false且属性名以ar开头 则移除属性
+		else if (
+			value == null ||
+			(value === false &&
+				// ARIA-attributes have a different notion of boolean values.
+				// The value `false` is different from the attribute not
+				// existing on the DOM, so we can't remove it. For non-boolean
+				// ARIA-attributes we could treat false as a removal, but the
+				// amount of exceptions would cost us too many bytes. On top of
+				// that other VDOM frameworks also always stringify `false`.
+				!/^ar/.test(name))
+		) {
 			dom.removeAttribute(name);
 		}
 		//设置属性

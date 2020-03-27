@@ -1,8 +1,13 @@
 .DS_Store
 node_modules
-package-lock.json
+npm-debug.log
+dist
+*/package-lock.json
 yarn.lock
 .vscode
 .idea
+test/ts/**/*.js
+coverage
+*.sw[op]
+
 .cache
-dist

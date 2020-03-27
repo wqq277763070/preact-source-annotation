@@ -27,9 +27,10 @@ export function createContext(defaultValue) {
 					//见diff/index.js中diff->outer-> let provider = tmp && context[tmp._id];
 					return ctx;
 				};
+
 				this.shouldComponentUpdate = _props => {
 					//当value不相等时
-					if (props.value !== _props.value) {
+					if (this.props.value !== _props.value) {
 						//执行渲染 context消费的组件
 						subs.some(c => {
 							c.context = _props.value;
@@ -49,6 +50,7 @@ export function createContext(defaultValue) {
 					};
 				};
 			}
+
 			return props.children;
 		}
 	};

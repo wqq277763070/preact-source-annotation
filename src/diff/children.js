@@ -12,7 +12,7 @@ import { getDomSibling } from '../component';
  * node whose children should be diff'ed against oldParentVNode
  * @param {import('../internal').VNode} oldParentVNode The old virtual
  * node whose children should be diff'ed against newParentVNode
- * @param {object} context The current context object
+ * @param {object} globalContext The current context object - modified by getChildContext
  * @param {boolean} isSvg Whether or not this DOM node is an SVG node
  * @param {Array<import('../internal').PreactElement>} excessDomChildren
  * @param {Array<import('../internal').Component>} commitQueue List of components
@@ -37,7 +37,7 @@ export function diffChildren(
 	parentDom,
 	newParentVNode,
 	oldParentVNode,
-	context,
+	globalContext,
 	isSvg,
 	excessDomChildren,
 	commitQueue,
@@ -124,7 +124,7 @@ export function diffChildren(
 					parentDom,
 					childVNode,
 					oldVNode,
-					context,
+					globalContext,
 					isSvg,
 					excessDomChildren,
 					commitQueue,
@@ -144,17 +144,19 @@ export function diffChildren(
 					if (firstChildDom == null) {
 						firstChildDom = newDom;
 					}
-					//如果子节点是函数或类型组件,这儿特殊处理 使其不会执行下面的parentDom.appendChild或parentDom.insertBefore
-					if (childVNode._lastDomChild != null) {
-						// Only Fragments or components that return Fragment like VNodes will
-						// have a non-null _lastDomChild. Continue the diff from the end of
-						// this Fragment's DOM tree.
-						newDom = childVNode._lastDomChild;
 
-						// Eagerly cleanup _lastDomChild. We don't need to persist the value because
+					let nextDom;
+					if (childVNode._nextDom !== undefined) {
+						// Only Fragments or components that return Fragment like VNodes will
+						// have a non-undefined _nextDom. Continue the diff from the sibling
+						// of last DOM child of this child VNode
+						nextDom = childVNode._nextDom;
+
+						// Eagerly cleanup _nextDom. We don't need to persist the value because
 						// it is only used by `diffChildren` to determine where to resume the diff after
-						// diffing Components and Fragments.
-						childVNode._lastDomChild = null;
+						// diffing Components and Fragments. Once we store it the nextDOM local var, we
+						// can clean up the property
+						childVNode._nextDom = undefined;
 						//如果excessDomChildren等于oldVNode或者newDom不等于oldDom或者newDom.parentNode为空
 						//render函数调用时excessDomChildren与oldVNode有可能相等
 					} else if (
@@ -168,6 +170,7 @@ export function diffChildren(
 						//如果oldDom为空或者其父节点更新了,则将newDom追加到parentDom的后面
 						outer: if (oldDom == null || oldDom.parentNode !== parentDom) {
 							parentDom.appendChild(newDom);
+							nextDom = null;
 						} else {
 							// `j<oldChildrenLength; j+=2` is an alternative to `j++<oldChildrenLength/2`
 							//这儿的条件是...j < oldChildrenLength / 2;j++
@@ -184,6 +187,7 @@ export function diffChildren(
 							}
 							//添加到oldDom前面
 							parentDom.insertBefore(newDom, oldDom);
+							nextDom = oldDom;
 						}
 
 						// Browsers will infer an option's `value` from `textContent` when
@@ -201,16 +205,36 @@ export function diffChildren(
 							parentDom.value = '';
 						}
 					}
+
+					// If we have pre-calculated the nextDOM node, use it. Else calculate it now
+					// Strictly check for `undefined` here cuz `null` is a valid value of `nextDom`.
+					// See more detail in create-element.js:createVNode
 					//oldDom这时为newDom元素之后紧跟的节点
-					oldDom = newDom.nextSibling;
+					if (nextDom !== undefined) {
+						oldDom = nextDom;
+					} else {
+						oldDom = newDom.nextSibling;
+					}
 					//如果是组件类型的节点,设置_lastDomChild
 					if (typeof newParentVNode.type == 'function') {
-						// At this point, if childVNode._lastDomChild existed, then
-						// newDom = childVNode._lastDomChild per line 101. Else it is
-						// the same as childVNode._dom, meaning this component returned
-						// only a single DOM node
-						newParentVNode._lastDomChild = newDom;
+						// Because the newParentVNode is Fragment-like, we need to set it's
+						// _nextDom property to the nextSibling of its last child DOM node.
+						//
+						// `oldDom` contains the correct value here because if the last child
+						// is a Fragment-like, then oldDom has already been set to that child's _nextDom.
+						// If the last child is a DOM VNode, then oldDom will be set to that DOM
+						// node's nextSibling.
+
+						newParentVNode._nextDom = oldDom;
 					}
+				} else if (
+					oldDom &&
+					oldVNode._dom == oldDom &&
+					oldDom.parentNode != parentDom
+				) {
+					// The above condition is to handle null placeholders. See test in placeholder.test.js:
+					// `efficiently replace null placeholders in parent rerenders`
+					oldDom = getDomSibling(oldVNode);
 				}
 			}
 
@@ -223,7 +247,7 @@ export function diffChildren(
 
 	// Remove children that are not part of any vnode.
 	//移除不使用的的子dom元素
-	if (excessDomChildren != null && typeof newParentVNode.type !== 'function') {
+	if (excessDomChildren != null && typeof newParentVNode.type != 'function') {
 		for (i = excessDomChildren.length; i--; ) {
 			if (excessDomChildren[i] != null) removeNode(excessDomChildren[i]);
 		}
@@ -258,7 +282,7 @@ export function toChildArray(children, callback, flattened) {
 	//没有存在的就是空数组
 	if (flattened == null) flattened = [];
 	//为null或者undefined或者是布尔类型
-	if (children == null || typeof children === 'boolean') {
+	if (children == null || typeof children == 'boolean') {
 		//有回调则执行push执行回调返回的结果
 		if (callback) flattened.push(callback(null));
 	}
@@ -271,7 +295,7 @@ export function toChildArray(children, callback, flattened) {
 	} else if (!callback) {
 		flattened.push(children);
 		//字符或者数字类型,创建虚拟节点
-	} else if (typeof children === 'string' || typeof children === 'number') {
+	} else if (typeof children == 'string' || typeof children == 'number') {
 		flattened.push(callback(createVNode(null, children, null, null)));
 	} else if (children._dom != null || children._component != null) {
 		flattened.push(

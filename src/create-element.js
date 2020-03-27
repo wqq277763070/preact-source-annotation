@@ -42,7 +42,7 @@ export function createElement(type, props, children) {
 	// If a Component VNode, check for and apply defaultProps
 	// Note: type may be undefined in development, must never error here.
 	//对defaultProps做处理，合并到props上
-	if (typeof type === 'function' && type.defaultProps != null) {
+	if (typeof type == 'function' && type.defaultProps != null) {
 		for (i in type.defaultProps) {
 			if (normalizedProps[i] === undefined) {
 				normalizedProps[i] = type.defaultProps[i];
@@ -88,8 +88,12 @@ export function createVNode(type, props, key, ref) {
 		_depth: 0,
 		//该虚拟节点渲染的dom
 		_dom: null,
+		// _nextDom must be initialized to undefined b/c it will eventually
+		// be set to dom.nextSibling which can return `null` and it is important
+		// to be able to distinguish between an uninitialized _nextDom and
+		// a _nextDom that has been set to `null`
 		//组件类型节点会保存最后一个子节点的dom
-		_lastDomChild: null,
+		_nextDom: undefined,
 		//类或函数组件的实例化
 		_component: null,
 		//标识是vnode
