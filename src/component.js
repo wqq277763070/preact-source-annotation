@@ -10,28 +10,28 @@ import { Fragment } from './create-element';
  * @param {object} context The initial context from parent components'
  * getChildContext
  */
-//类组件
+//组件
 export function Component(props, context) {
 	this.props = props;
 	this.context = context;
 
-	/*
 	//还有以下内部属性
-	//对应渲染的dom
+	/*
+	对应渲染的dom
 	this.base
-	//标记是forceUpdate,如果是这个渲染是不执行某些生命周期
+	标记是否是forceUpdate。如果是true，渲染时不执行某些生命周期
 	this._force
-	//标记组件内部状态是否发生改变,渲染时设为true,渲染后设为false,防止队列中重复渲染
+	标记组件内部状态是否发生改变。渲染时设为true，渲染后设为false，防止队列中重复渲染
 	this._dirty
-	//保存setState和did生命周期的回调
+	保存setState和did生命周期的回调
 	this._renderCallbacks
-	//保存context,也就是createContext的context,与this.context的区别是this.context有可能是Provider的value
-	this._context
-	//setState后新的状态会保存在这儿,渲染时会设置给state
+	保存createContext中ctx对象
+	this._globalContext
+	setState后新的状态会保存在这儿，渲染时会设置给state
 	this._nextState
-	//对应的虚拟节点
+	对应的虚拟节点
 	this._vnode
-	//父的真实dom
+	父的真实dom
 	this._parentDom
 	*/
 }
@@ -69,7 +69,7 @@ Component.prototype.setState = function(update, callback) {
 	if (update == null) return;
 
 	if (this._vnode) {
-		//有回调把回调加入回调数组里
+		//有回调把回调加入回调队列里
 		if (callback) this._renderCallbacks.push(callback);
 		//加入渲染队列并渲染
 		enqueueRender(this);
@@ -87,9 +87,9 @@ Component.prototype.forceUpdate = function(callback) {
 		// Set render mode so that we can differentiate where the render request
 		// is coming from. We need this because forceUpdate should never call
 		// shouldComponentUpdate
-		//标记强制更新
+		//标记是强制更新
 		this._force = true;
-		//有回调加入回调数组里
+		//有回调把回调加入回调队列里
 		if (callback) this._renderCallbacks.push(callback);
 		//加入渲染队列并渲染
 		enqueueRender(this);
@@ -113,7 +113,7 @@ Component.prototype.render = Fragment;
  * @param {import('./internal').VNode} vnode
  * @param {number | null} [childIndex]
  */
-//获得虚拟节点对应index的子节点的真实dom
+//获得虚拟节点对应index子节点的真实dom
 export function getDomSibling(vnode, childIndex) {
 	if (childIndex == null) {
 		// Use childIndex==null as a signal to resume the search from the vnode's sibling
@@ -127,7 +127,7 @@ export function getDomSibling(vnode, childIndex) {
 	//遍历虚拟节点的子节点
 	for (; childIndex < vnode._children.length; childIndex++) {
 		sibling = vnode._children[childIndex];
-		//如果该子节点的_dom不为null,则返回
+		//如果该子节点的_dom不为null，则返回
 		if (sibling != null && sibling._dom != null) {
 			// Since updateParentDomPointers keeps _dom pointer correct,
 			// we can rely on _dom to tell us if this subtree contains a
@@ -141,7 +141,8 @@ export function getDomSibling(vnode, childIndex) {
 	// Only climb up and search the parent if we aren't searching through a DOM
 	// VNode (meaning we reached the DOM parent of the original vnode that began
 	// the search)
-	//没有找到并且虚拟节点类型为函数则调用getDomSibling(vnode),此时Index为null,执行此函数第一行代码      其它则返回null
+	//没有找到并且虚拟节点类型为函数则调用getDomSibling(vnode)
+	//此时参数中childIndex为null，执行此函数第一行代码，其它则返回null
 	return typeof vnode.type == 'function' ? getDomSibling(vnode) : null;
 }
 
@@ -157,7 +158,7 @@ function renderComponent(component) {
 
 	if (parentDom) {
 		let commitQueue = [];
-		//比较更新
+		//比较渲染
 		let newDom = diff(
 			parentDom,
 			vnode,
@@ -170,7 +171,7 @@ function renderComponent(component) {
 		);
 		//渲染完成时执行did生命周期和setState回调
 		commitRoot(commitQueue, vnode);
-		//如果newDom与oldDom不一致,则调用updateParentDomPointers
+		//如果newDom与oldDom不一致，则调用updateParentDomPointers
 		if (newDom != oldDom) {
 			updateParentDomPointers(vnode);
 		}
@@ -180,21 +181,21 @@ function renderComponent(component) {
 /**
  * @param {import('./internal').VNode} vnode
  */
-//更新组件类型的虚拟节点的祖先节点的_dom与_component.base
+//更新祖先节点为函数型虚拟节点的_dom与_component.base
 function updateParentDomPointers(vnode) {
-	//取_parent如果不为空并且_component不为空
+	//如果_parent与_component都不为空
 	if ((vnode = vnode._parent) != null && vnode._component != null) {
 		vnode._dom = vnode._component.base = null;
 		//遍历此节点的子节点
 		for (let i = 0; i < vnode._children.length; i++) {
 			let child = vnode._children[i];
-			//如果此节点的子节点_dom为真,然后设置给此节点的_dom与_component.base
+			//如果子节点不为null并且他的_dom也不为null，则更新_component.base与_dom
 			if (child != null && child._dom != null) {
 				vnode._dom = vnode._component.base = child._dom;
 				break;
 			}
 		}
-		//递归设置
+		//递归
 		return updateParentDomPointers(vnode);
 	}
 }
@@ -205,7 +206,7 @@ function updateParentDomPointers(vnode) {
  */
 //待渲染组件队列
 let rerenderQueue = [];
-//渲染次数统计
+//渲染计数，异步渲染后会设置为0
 let rerenderCount = 0;
 
 /**
@@ -214,8 +215,7 @@ let rerenderCount = 0;
  */
 /* istanbul ignore next */
 // Note the following line isn't tree-shaken by rollup cuz of rollup/rollup#2566
-//延迟,如defer(callback)，如果支持Promise则会用Promise then执行,否则用setTimeout执行
-//见README.md解惑疑点1
+//异步调度器。如果支持Promise则会用Promise，否则用setTimeout
 const defer =
 	typeof Promise == 'function'
 		? Promise.prototype.then.bind(Promise.resolve())
@@ -229,18 +229,18 @@ const defer =
  * * [Designing APIs for Asynchrony](https://blog.izs.me/2013/08/designing-apis-for-asynchrony)
  * * [Callbacks synchronous and asynchronous](https://blog.ometer.com/2011/07/24/callbacks-synchronous-and-asynchronous/)
  */
-//延迟执行的钩子
+//异步调度钩子
 let prevDebounce;
 
 /**
  * Enqueue a rerender of a component
  * @param {import('./internal').Component} c The component to rerender
  */
-//组件加入渲染队列并延迟渲染
+//组件加入渲染队列并渲染
 export function enqueueRender(c) {
 	//如果_dirty为false则设为true
 	//然后把组件加入队列中
-	//如果队列长度为1或者重新设置过debounceRendering钩子则延迟渲染
+	//自加加rerenderCount并且如果为0或者重新设置过debounceRendering钩子则触发渲染
 	if (
 		(!c._dirty &&
 			(c._dirty = true) &&
@@ -249,7 +249,7 @@ export function enqueueRender(c) {
 		prevDebounce !== options.debounceRendering
 	) {
 		prevDebounce = options.debounceRendering;
-		//延迟执行process
+		//执行process
 		(prevDebounce || defer)(process);
 	}
 }
@@ -258,8 +258,9 @@ export function enqueueRender(c) {
 //遍历队列渲染组件
 function process() {
 	let queue;
+	//当队列长度不为0
 	while ((rerenderCount = rerenderQueue.length)) {
-		//按深度排序 最顶级的组件的最先执行
+		//按深度排序，最顶级的组件的最先执行
 		queue = rerenderQueue.sort((a, b) => a._vnode._depth - b._vnode._depth);
 		rerenderQueue = [];
 		// Don't update `renderCount` yet. Keep its value non-zero to prevent unnecessary

@@ -3,7 +3,7 @@ import { enqueueRender } from './component';
 export let i = 0;
 
 //创建context
-//defaultValue 只有组件的祖先组件中没有Provider组件才使用这个，不是Provider没有设置value
+//defaultValue只有组件的祖先组件中没有Provider组件才使用这个，不是Provider没有设置value
 export function createContext(defaultValue) {
 	const ctx = {};
 
@@ -19,28 +19,29 @@ export function createContext(defaultValue) {
 		Provider(props) {
 			if (!this.getChildContext) {
 				const subs = [];
-				//渲染Provider时调用这个然后吧ctx作为context传递给下级组件
+				//在渲染Provider组件时调用
+				//这个然后把ctx作为globalContext传递给下级组件
 				this.getChildContext = () => {
 					ctx[context._id] = this;
 					//至于为什么不直接返回context而是返回ctx对象
-					//是由于Provider组件后代也可以有Provider组件,context的消费者只取contextType中_id像匹配的
-					//见diff/index.js中diff->outer-> let provider = tmp && context[tmp._id];
+					//是由于Provider组件的后代组件也可以有Provider组件，context的消费者只取contextType中_id相匹配的
+					//见diff/index.js中diff->outer-> let provider = tmp && globalContext[tmp._id];
 					return ctx;
 				};
 
 				this.shouldComponentUpdate = _props => {
 					//当value不相等时
 					if (this.props.value !== _props.value) {
-						//执行渲染 context消费的组件
+						//渲染context消费的组件
 						subs.some(c => {
 							c.context = _props.value;
 							enqueueRender(c);
 						});
 					}
 				};
-
+				//渲染消费content组件时调用
 				this.sub = c => {
-					//添加到组件更新队列中，当value改变时渲染该组件
+					//添加到队列中，当value改变时渲染该组件
 					subs.push(c);
 					let old = c.componentWillUnmount;
 					//当组件卸载后从队列中删除，然后执行老的componentWillUnmount
@@ -54,7 +55,7 @@ export function createContext(defaultValue) {
 			return props.children;
 		}
 	};
-	//设置contextType
+	//给Consumer组件设置contextType
 	context.Consumer.contextType = context;
 
 	return context;

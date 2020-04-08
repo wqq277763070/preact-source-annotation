@@ -1,22 +1,41 @@
-import { createContext, render } from '../src';
+import {
+	h,
+	createContext,
+	cloneElement,
+	Component,
+	render,
+	createRef
+} from '../src';
 
-const FontContext = createContext(20);
-
-function Child() {
-	return (
-		<FontContext.Consumer>
-			{fontSize => <div style={{ fontSize: fontSize }}>child</div>}
-		</FontContext.Consumer>
-	);
+class Root extends Component {
+	render() {
+		return <div>33333</div>;
+	}
 }
 
-function App() {
-	return <Child />;
+class App extends Component {
+	$ref = createRef();
+
+	state = {
+		xx: 1
+	};
+
+	componentDidMount() {
+		setTimeout(() => {
+			this.setState({
+				xx: 0
+			});
+		}, 5000);
+	}
+
+	render() {
+		return (
+			<div>
+				23412341
+				{this.state.xx === 1 && <Root ref={this.$ref} />}
+			</div>
+		);
+	}
 }
 
-render(
-	<FontContext.Provider value={26}>
-		<App />
-	</FontContext.Provider>,
-	document.getElementById('app')
-);
+render(<App />, document.getElementById('app'));

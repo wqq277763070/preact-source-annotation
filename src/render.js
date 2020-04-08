@@ -13,12 +13,8 @@ const IS_HYDRATE = EMPTY_OBJ;
  * @param {Element | Text} [replaceNode] Optional: Attempt to re-use an
  * existing DOM tree rooted at `replaceNode`
  */
-/**
- * 渲染虚拟节点到真实节点
- * @param vnode 虚拟节点
- * @param parentDom 真实dom节点
- * @param replaceNode
- */
+//渲染虚拟节点到真实节点
+//replaceNode如果设置将会新渲染的节点替换这个节点
 export function render(vnode, parentDom, replaceNode) {
 	//root钩子
 	if (options._root) options._root(vnode, parentDom);
@@ -41,8 +37,9 @@ export function render(vnode, parentDom, replaceNode) {
 	vnode = createElement(Fragment, null, [vnode]);
 
 	// List of effects that need to be called after diffing.
-	//未卸载的组件列表
+	//保存未卸载的组件列表
 	let commitQueue = [];
+	//开始渲染
 	diff(
 		parentDom,
 		// Determine the new vnode tree and store it on the DOM element on
@@ -62,7 +59,7 @@ export function render(vnode, parentDom, replaceNode) {
 	);
 
 	// Flush all queued effects
-	//渲染完成时执行did生命周期和setState回调
+	//渲染完成时执行did生命周期和setState的回调
 	commitRoot(commitQueue, vnode);
 }
 
@@ -73,8 +70,8 @@ export function render(vnode, parentDom, replaceNode) {
  * update
  */
 //hydration模式渲染
-//此模式中,diffProps中只处理事件部分,其它都不处理
-//主要用于在服务器渲染的节点去调用hydrate
+//此模式中，diff props中只处理事件部分，其它都不处理
+//主要用于在服务器渲染的节点，在客户端时调用hydrate
 export function hydrate(vnode, parentDom) {
 	render(vnode, parentDom, IS_HYDRATE);
 }

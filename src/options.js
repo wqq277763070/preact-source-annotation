@@ -9,7 +9,8 @@ import { _catchError } from './diff/catch-error';
  * ctrl+click or cmd+click on mac the type definition below).
  * @type {import('./internal').Options}
  */
-//保存各种钩子，例如设置options.vnode在创建虚拟节点时会执行
+//保存各种钩子
+//例如设置options.vnode会在创建虚拟节点时执行
 const options = {
 	_catchError
 };

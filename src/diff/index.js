@@ -22,16 +22,19 @@ import options from '../options';
  * Fragments that have siblings. In most cases, it starts out as `oldChildren[0]._dom`.
  * @param {boolean} [isHydrating] Whether or not we are in hydration
  */
-//parentDom渲染的父真实dom
-//newVNode新的虚拟节点
-//oldVNOde老的虚拟节点
-//context如果是createContext().Provide组件,获得context并向下传递的东西(ctx)
-//isSvg是否是svg,svg在创建dom元素和设置dom属性时特殊处理
-//excessDomChildren存在的子节点dom
-//commitQueue引用数组,所有执行完后会执行数组中组件的_renderCallbacks的回调
-//oldDom节点老的dom
-//isHydrating是否hydration模式渲染,该模式对props只处理事件
-//对比虚拟节点,主要处理函数节点
+/**
+ * 对比虚拟节点,主要处理函数节点
+ * parentDom渲染的父真实dom
+ * newVNode新的虚拟节点
+ * oldVNOde老的虚拟节点
+ * globalContext，create-context中的ctx对象
+ * isSvg是否是svg，svg在创建dom元素和设置dom属性时特殊处理
+ * excessDomChildren存在的子节点dom
+ * commitQueue保存有回调的组件
+ * oldDom节点老的dom
+ * isHydrating是否hydration模式渲染,该模式对props只处理事件
+ */
+
 export function diff(
 	parentDom,
 	newVNode,
@@ -62,7 +65,7 @@ export function diff(
 			// Necessary for createContext api. Setting this property will pass
 			// the context value as `this.context` just for this component.
 			tmp = newType.contextType;
-			//找到祖先的provider
+			//找到所属的provider组件
 			let provider = tmp && globalContext[tmp._id];
 			//有tmp时，如果提供provider时为provider的value，不然为createContext的defaultValue
 			//没有则为父节点传递下来的context
@@ -75,12 +78,12 @@ export function diff(
 			//如果已经存在实例化的组件
 			if (oldVNode._component) {
 				c = newVNode._component = oldVNode._component;
-				//设置清除异常变量,如果渲染完后没有异常出现,会清除该组件的异常标记
+				//设置清除异常变量，如果渲染完后没有异常出现，会清除该组件的异常标记
 				clearProcessingException = c._processingException = c._pendingError;
 			} else {
 				// Instantiate the new component
 				if ('prototype' in newType && newType.prototype.render) {
-					//类组件的话  去实例化
+					//类组件的话，去实例化
 					newVNode._component = c = new newType(newProps, componentContext); // eslint-disable-line new-cap
 				} else {
 					//函数组件的话会实例化Component
@@ -95,8 +98,7 @@ export function diff(
 				c.props = newProps;
 				if (!c.state) c.state = {};
 				c.context = componentContext;
-				//至于还要用c._context不用c.context
-				//由于context有可能为provider的value
+				//设置_globalContext
 				c._globalContext = globalContext;
 				//标记需要渲染并且是新创建的组件
 				isNew = c._dirty = true;
@@ -104,13 +106,13 @@ export function diff(
 			}
 
 			// Invoke getDerivedStateFromProps
-			//如果nextState为假则赋值state
+			//如果nextState为null则赋值state
 			if (c._nextState == null) {
 				c._nextState = c.state;
 			}
-			//有getDerivedStateFromProps执行此生命周期并扩展到_nextState
+			//有getDerivedStateFromProps则执行此生命周期并扩展到_nextState
 			if (newType.getDerivedStateFromProps != null) {
-				//如果nextState和state相同则拷贝nextState到nextState
+				//如果nextState和state相同则拷贝_nextState
 				if (c._nextState == c.state) {
 					c._nextState = assign({}, c._nextState);
 				}
@@ -147,7 +149,7 @@ export function diff(
 				) {
 					c.componentWillReceiveProps(newProps, componentContext);
 				}
-				//如果不是forceUpdate并且shouldComponentUpdate则执行此生命周期返回false的情况下
+				//如果不是forceUpdate并且设置了shouldComponentUpdate则执行此生命周期在返回false的情况下
 				if (
 					!c._force &&
 					c.shouldComponentUpdate != null &&
@@ -198,10 +200,10 @@ export function diff(
 			c._parentDom = parentDom;
 			//执行render
 			tmp = c.render(c.props, c.state, c.context);
-			//如果render返回结果中最外层是Fragment组件
+			//如果render返回结果中最外层是Fragment组件并且没有设置key
 			let isTopLevelFragment =
 				tmp != null && tmp.type == Fragment && tmp.key == null;
-			//Fragment组件则使用props.children，其它使用render返回的
+			//Fragment组件则使用props.children，其它使用render返回的节点
 			newVNode._children = isTopLevelFragment
 				? tmp.props.children
 				: Array.isArray(tmp)
@@ -273,8 +275,8 @@ export function commitRoot(commitQueue, root) {
 
 	commitQueue.some(c => {
 		try {
-			//将_renderCallbacks设为空，防止执行时在加入回调形成死循环
 			commitQueue = c._renderCallbacks;
+			//将_renderCallbacks设为空，防止执行时再加入回调形成死循环
 			c._renderCallbacks = [];
 			//循环执行
 			commitQueue.some(cb => {
@@ -325,8 +327,8 @@ function diffElementNodes(
 			// if newVNode matches an element in excessDomChildren or the `dom`
 			// argument matches an element in excessDomChildren, remove it from
 			// excessDomChildren so it isn't later removed in diffChildren
-			//如果虚拟节点类型为null而存在节点类型是text或者虚拟节点类型和存在节点类型相同，则复用
-			//todo 3
+			//如果虚拟节点类型为null而存在节点类型是text或者虚拟节点类型和存在节点类型相同
+			//或者dom与存在的节点是同一个，则复用
 			if (
 				child != null &&
 				((newVNode.type === null
@@ -343,36 +345,35 @@ function diffElementNodes(
 	}
 	//如果dom为空
 	if (dom == null) {
-		//text节点
+		//text类型直接创建返回
 		if (newVNode.type === null) {
 			return document.createTextNode(newProps);
 		}
 		//创建元素
 		dom = isSvg
 			? document.createElementNS('http://www.w3.org/2000/svg', newVNode.type)
-			//todo 2
 			: document.createElement(
 					newVNode.type,
+					//如果有is字段则设置标签名
 					newProps.is && { is: newProps.is }
 			  );
 		// we created a new parent, so none of the previously attached children can be reused:
-		//以下流程中 excessDomChildren表示dom的子节点,这儿的dom是新创建的,所以要设为null,表示不可复用子节点
+		//以下流程中excessDomChildren表示dom的子节点，这儿的dom是新创建的，所以要设为null，表示不可复用子节点
 		excessDomChildren = null;
 	}
 	//如果是text节点
 	if (newVNode.type === null) {
-		//todo 3
-		//如果两者不相等,则设置data来更新TextNode的文本
+		//如果内容不相等，则设置data来更新TextNode的文本
 		if (oldProps !== newProps && dom.data != newProps) {
 			dom.data = newProps;
 		}
 	}
-	//新老节点不相等
+	//新老节点不相同
 	else if (newVNode !== oldVNode) {
 		/**
 		 * 在这儿excessDomChildren是dom的子节点
-		 * 例如以下就会渲染空,因为第二个渲染文本节点时,由于dom!==null,
-		 * 所以excessDomChildren不会移除之前的文本节点,导致diffChildren中removeNode(excessDomChildren)移除此文本节点
+		 * 例如以下就会渲染空，因为第二个渲染文本节点时，由于dom!==null,
+		 * 所以excessDomChildren不会移除之前的文本节点，导致diffChildren中removeNode(excessDomChildren)移除此文本节点
 		 * render(<p>2</p>, document.getElementById('app'));
 		 * render(
 		 * 	<p>3</p>,
@@ -390,9 +391,9 @@ function diffElementNodes(
 
 		// During hydration, props are not diffed at all (including dangerouslySetInnerHTML)
 		// @TODO we should warn in debug mode when props don't match here.
-		//如果是非hydration模式则执行以下,因为hydration模式不会处理props
+		//如果是非hydration模式则执行以下，因为hydration模式不会处理props
 		if (!isHydrating) {
-			//如果oldProps是空对象,则将dom的属性扩展给oldProps
+			//如果oldProps是空对象，则将dom的属性扩展给oldProps
 			if (oldProps === EMPTY_OBJ) {
 				oldProps = {};
 				for (let i = 0; i < dom.attributes.length; i++) {
@@ -402,7 +403,7 @@ function diffElementNodes(
 			//新的props或者老的props有设置dangerouslySetInnerHTML
 			if (newHtml || oldHtml) {
 				// Avoid re-applying the same '__html' if it did not changed between re-render
-				//newHtml为空或者oldHtml为空或者 oldHtml与newHtml不相同  则设置给innerHTML
+				//newHtml为空或者oldHtml为空 或者oldHtml与newHtml不相同  则设置给innerHTML
 				if (!newHtml || !oldHtml || newHtml.__html != oldHtml.__html) {
 					dom.innerHTML = (newHtml && newHtml.__html) || '';
 				}
@@ -443,7 +444,7 @@ function diffElementNodes(
 				dom.value = newProps.value == null ? '' : newProps.value;
 			}
 			//处理checked
-			//在这儿是保证了顺序,先处理value,在处理checked
+			//在这儿是保证了顺序，先处理value，在处理checked
 			if (
 				'checked' in newProps &&
 				newProps.checked !== undefined &&
@@ -466,7 +467,7 @@ function diffElementNodes(
 //应用ref
 export function applyRef(ref, value, vnode) {
 	try {
-		//如果是函数 执行函数并把ref传进去
+		//如果是函数，执行函数并把ref传进去
 		if (typeof ref == 'function') ref(value);
 		//其它赋值给current属性
 		else ref.current = value;
@@ -489,13 +490,13 @@ export function unmount(vnode, parentVNode, skipRemove) {
 	let r;
 	//unmount钩子
 	if (options.unmount) options.unmount(vnode);
-
+	//设置ref.current为null
 	if ((r = vnode.ref)) {
 		if (!r.current || r.current === vnode._dom) applyRef(r, null, parentVNode);
 	}
 
 	let dom;
-	//如果虚拟节点类型不是函数并且skipRemove为false 则赋值到dom方便后面移除节点
+	//如果不是函数类型虚拟节点并且skipRemove为非，则赋值给dom方便后面移除节点
 	//skipRemove的作用是在后面递归循环子节点unmount时不会执行removeNode
 	if (!skipRemove && typeof vnode.type != 'function') {
 		skipRemove = (dom = vnode._dom) != null;
@@ -503,7 +504,6 @@ export function unmount(vnode, parentVNode, skipRemove) {
 
 	// Must be set to `undefined` to properly clean up `_nextDom`
 	// for which `null` is a valid value. See comment in `create-element.js`
-	//todo 1
 	vnode._dom = vnode._nextDom = undefined;
 
 	if ((r = vnode._component) != null) {

@@ -7,26 +7,22 @@ import options from './options';
  * @param {object | null | undefined} [props] The properties of the virtual node
  * @param {Array<import('.').ComponentChildren>} [children] The children of the virtual node
  * @returns {import('./internal').VNode}
- */
-/**
- * 创建元素
- * @param type {null |string| ComponentType} type 元素类型
- * 如果是文本数字等简单元素,则为null,
- * 如果是html标签的节点,则是html标签字符串,如`div`
- * 如果是函数型的节点,则是这个函数,如`App`判断是函数节点或者html标签主要依据是是否首字母大写,如果是大写,他就是函数型节点,如果是小写,他就是普通的html节点,这就是为什么函数组件首字母要求大写的原因
  *
- * @param props {string | Attributes} 元素属性
- * @param children {string | VNode} 元素子节点
- * @returns {VNode}
+ * 创建虚拟节点（JSX转换为JS时使用）
+ * 如果是文本数字等简单节点，type则为null,
+ * 如果是html标签的节点，type则是html标签名称，如div
+ * 如果是函数型的节点，则是这个函数，如App
+ * 判断是函数或者html标签节点主要依据是首字母是否大写。如果是大写，他就是函数型节点；如果是小写，他就是普通的html节点（this除外）
+ * 这就是为什么函数组件要求首字母大写的原因
  */
 export function createElement(type, props, children) {
 	let normalizedProps = {},
 		i;
-	//选择性拷贝props
+	//拷贝props到normalizedProps，会排除key与ref属性
 	for (i in props) {
 		if (i !== 'key' && i !== 'ref') normalizedProps[i] = props[i];
 	}
-	//对参数处理，如果有多个children是数组，单个不是
+	//处理children。如果有多个参数children是数组，单个不是
 	if (arguments.length > 3) {
 		children = [children];
 		// https://github.com/preactjs/preact/issues/1916
@@ -34,14 +30,14 @@ export function createElement(type, props, children) {
 			children.push(arguments[i]);
 		}
 	}
-	//赋值给props.children
+	//赋值给新props
 	if (children != null) {
 		normalizedProps.children = children;
 	}
 
 	// If a Component VNode, check for and apply defaultProps
 	// Note: type may be undefined in development, must never error here.
-	//对defaultProps做处理，合并到props上
+	//对defaultProps做处理，合并到新props上
 	if (typeof type == 'function' && type.defaultProps != null) {
 		for (i in type.defaultProps) {
 			if (normalizedProps[i] === undefined) {
@@ -49,7 +45,7 @@ export function createElement(type, props, children) {
 			}
 		}
 	}
-	//调用创建虚拟节点
+	//创建虚拟节点
 	return createVNode(
 		type,
 		normalizedProps,
@@ -70,8 +66,9 @@ export function createElement(type, props, children) {
  * receive a reference to its created child
  * @returns {import('./internal').VNode}
  */
-//创建虚拟节点
-//type为null时，props参数就是对应的children {type:null,props:123,..}这个是合法的
+//创建虚拟节点（Preact内部使用）
+//type为null时，props参数就是对应的children
+//例如{type:null,props:123,..}这个是合法的
 export function createVNode(type, props, key, ref) {
 	// V8 seems to be better at detecting type shapes if the object is allocated from the same call site
 	// Do not inline into createElement and coerceToVNode!
@@ -96,20 +93,20 @@ export function createVNode(type, props, key, ref) {
 		_nextDom: undefined,
 		//类或函数组件的实例化
 		_component: null,
-		//标识是vnode
+		//标识是虚拟节点
 		constructor: undefined
 	};
-	//钩子
+	//执行创建虚拟节点钩子
 	if (options.vnode) options.vnode(vnode);
 
 	return vnode;
 }
 
-//创建ref，这个ref不同react，创建时没有current
+//创建ref。这个ref不同于react，没有current
 export function createRef() {
 	return {};
 }
-//片段
+//片段组件
 export function Fragment(props) {
 	return props.children;
 }
@@ -119,6 +116,7 @@ export function Fragment(props) {
  * @param {*} vnode
  * @returns {vnode is import('./internal').VNode}
  */
-//判断是否是preact虚拟节点，createElement创建后constructor为undefined
+//判断是否是虚拟节点
+//createElement创建后constructor为undefined
 export const isValidElement = vnode =>
 	vnode != null && vnode.constructor === undefined;

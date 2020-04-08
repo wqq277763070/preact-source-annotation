@@ -7,17 +7,17 @@ import { enqueueRender } from '../component';
  * the error that was caught (except for unmounting when this parameter
  * is the highest parent that was being unmounted)
  */
-//处理虚拟节点错误
+//处理渲染虚拟节点时异常情况
 export function _catchError(error, vnode) {
 	/** @type {import('../internal').Component} */
 	let component, hasCaught;
-	//不断向上循环父组件
+	//不断遍历父组件
 	for (; (vnode = vnode._parent); ) {
-		//这儿是有父组件并且该父组件不是异常
-		//为什么没有直接用component._processingException因为只有渲染该组件时有异常则跳过该组件,见README.md解惑疑点6
+		//如果有父组件并且该父组件不是异常
 		if ((component = vnode._component) && !component._processingException) {
 			try {
-				//如果组件有静态getDerivedStateFromError，将执行结果传给setState
+				//如果组件有静态方法getDerivedStateFromError，将执行结果传给setState
+				//component.constructor是组件函数
 				if (
 					component.constructor &&
 					component.constructor.getDerivedStateFromError != null
@@ -35,7 +35,6 @@ export function _catchError(error, vnode) {
 				}
 
 				//再去渲染处理error的组件
-				//为什么又去渲染了这个组件呢,见README.md解惑疑点5
 				if (hasCaught)
 					return enqueueRender((component._pendingError = component));
 			} catch (e) {
@@ -43,6 +42,6 @@ export function _catchError(error, vnode) {
 			}
 		}
 	}
-	//如果没有getDerivedStateFromError或componentDidCatch，则抛出error
+	//如果异常没有处理，则抛出error
 	throw error;
 }

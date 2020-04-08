@@ -58,12 +58,12 @@ export function diffChildren(
 	// for this purpose, because `null` is a valid value for `oldDom` which can mean to skip to this logic
 	// (e.g. if mounting a new tree in which the old DOM should be ignored (usually for Fragments).
 	//只有在render函数和diffElementNodes函数调用diffChildren时，oldDom可能等于EMPTY_OBJ
-	//所以只有标签型节点或者render进来的组件型节点处理,其它的组件类型这儿不用处理
+	//所以只有标签型节点或者render进来的组件型节点处理，其它的组件类型这儿不用处理
 	if (oldDom == EMPTY_OBJ) {
 		//如果有excessDomChildren,则取第一个
 		if (excessDomChildren != null) {
 			oldDom = excessDomChildren[0];
-			//如果oldChildrenLength,则从虚拟节点中查找
+			//如果oldChildrenLength，则从虚拟节点中查找
 		} else if (oldChildrenLength) {
 			oldDom = getDomSibling(oldParentVNode, 0);
 		} else {
@@ -86,7 +86,7 @@ export function diffChildren(
 				// We use `undefined`, as `null` is reserved for empty placeholders
 				// (holes).
 				oldVNode = oldChildren[i];
-				//如果老节点为null或者 新老子节点的key和type相同 则设置老节点删除 以便后面不执行unmount和参与后续节点的比较
+				//如果老节点为null 或者新老子节点的key和type相同，则设置老节点undefined，以便后面不执行unmount和参与后续节点的比较
 				if (
 					oldVNode === null ||
 					(oldVNode &&
@@ -97,7 +97,7 @@ export function diffChildren(
 				} else {
 					// Either oldVNode === undefined or oldChildrenLength > 0,
 					// so after this loop oldVNode == null or oldVNode is a valid value.
-					//在老的子节点中循环 以便找到新老子节点相对应的，有相对应的就会复用这个节点
+					//在老的子节点中循环 以便找到新子节点相对应的节点，有相对应的就会复用这个节点
 					for (j = 0; j < oldChildrenLength; j++) {
 						oldVNode = oldChildren[j];
 						// If childVNode is unkeyed, we only match similarly unkeyed nodes, otherwise we match by key.
@@ -131,7 +131,7 @@ export function diffChildren(
 					oldDom,
 					isHydrating
 				);
-				//如果新子节点有ref并且不等于老子节点的ref，推到refs等会会执行去掉老节点ref并重新应用新节点ref
+				//如果新老节点的ref不相同，推到refs数组中后面会应用ref
 				if ((j = childVNode.ref) && oldVNode.ref != j) {
 					if (!refs) refs = [];
 					if (oldVNode.ref) refs.push(oldVNode.ref, null, childVNode);
@@ -146,6 +146,7 @@ export function diffChildren(
 					}
 
 					let nextDom;
+					//如果子节点是函数或类型组件，这儿特殊处理，使其不会执行下面的parentDom.appendChild或parentDom.insertBefore
 					if (childVNode._nextDom !== undefined) {
 						// Only Fragments or components that return Fragment like VNodes will
 						// have a non-undefined _nextDom. Continue the diff from the sibling
@@ -157,7 +158,7 @@ export function diffChildren(
 						// diffing Components and Fragments. Once we store it the nextDOM local var, we
 						// can clean up the property
 						childVNode._nextDom = undefined;
-						//如果excessDomChildren等于oldVNode或者newDom不等于oldDom或者newDom.parentNode为空
+						//如果excessDomChildren等于oldVNode 或者newDom不等于oldDom 或者newDom.parentNode为空
 						//render函数调用时excessDomChildren与oldVNode有可能相等
 					} else if (
 						excessDomChildren == oldVNode ||
@@ -167,15 +168,15 @@ export function diffChildren(
 						// NOTE: excessDomChildren==oldVNode above:
 						// This is a compression of excessDomChildren==null && oldVNode==null!
 						// The values only have the same type when `null`.
-						//如果oldDom为空或者其父节点更新了,则将newDom追加到parentDom的后面
+						//如果oldDom为空或者其父节点更新了，则将newDom追加到parentDom的后面
 						outer: if (oldDom == null || oldDom.parentNode !== parentDom) {
 							parentDom.appendChild(newDom);
 							nextDom = null;
 						} else {
 							// `j<oldChildrenLength; j+=2` is an alternative to `j++<oldChildrenLength/2`
-							//这儿的条件是...j < oldChildrenLength / 2;j++
-							//如果紧跟节点和新节点相同,则直接跳出
-							//为什么只判断了对比了一半元素呢,猜测是为性能考虑,如果前面一般都不相同后面基本不会相同
+							//这儿的条件等同于...j < oldChildrenLength / 2;j++
+							//如果紧跟节点和新节点相同，则直接跳出
+							//为什么只判断了对比了一半元素呢，猜测是为性能考虑，如果前面一般都不相同后面基本不会相同
 							for (
 								sibDom = oldDom, j = 0;
 								(sibDom = sibDom.nextSibling) && j < oldChildrenLength;
@@ -200,7 +201,7 @@ export function diffChildren(
 						//
 						// To fix it we make sure to reset the inferred value, so that our own
 						// value check in `diff()` won't be skipped.
-						//如果option不设置value他将会从元素的文本内容中获取,这儿主要修复这个
+						//如果option不设置value他将会从元素的文本内容中获取，这儿主要修复这个
 						if (newParentVNode.type == 'option') {
 							parentDom.value = '';
 						}
@@ -209,13 +210,13 @@ export function diffChildren(
 					// If we have pre-calculated the nextDOM node, use it. Else calculate it now
 					// Strictly check for `undefined` here cuz `null` is a valid value of `nextDom`.
 					// See more detail in create-element.js:createVNode
-					//oldDom这时为newDom元素之后紧跟的节点
 					if (nextDom !== undefined) {
 						oldDom = nextDom;
 					} else {
+						//oldDom这时为newDom元素之后紧跟的节点
 						oldDom = newDom.nextSibling;
 					}
-					//如果是组件类型的节点,设置_lastDomChild
+					//如果是组件类型的节点，设置_nextDom
 					if (typeof newParentVNode.type == 'function') {
 						// Because the newParentVNode is Fragment-like, we need to set it's
 						// _nextDom property to the nextSibling of its last child DOM node.
@@ -242,11 +243,11 @@ export function diffChildren(
 			return childVNode;
 		}
 	);
-	//设置_dom 函数类型的节点 _dom为第一个子节点的dom,其它的为本身创建的dom节点
+	//设置_dom。函数类型的节点，_dom为第一个子节点的dom，其它的为本身创建的dom节点
 	newParentVNode._dom = firstChildDom;
 
 	// Remove children that are not part of any vnode.
-	//移除不使用的的子dom元素
+	//移除没有用到的dom元素
 	if (excessDomChildren != null && typeof newParentVNode.type != 'function') {
 		for (i = excessDomChildren.length; i--; ) {
 			if (excessDomChildren[i] != null) removeNode(excessDomChildren[i]);
@@ -254,13 +255,13 @@ export function diffChildren(
 	}
 
 	// Remove remaining oldChildren if there are any.
-	//循环卸载不使用的老虚拟节点
+	//卸载不使用的老虚拟节点
 	for (i = oldChildrenLength; i--; ) {
 		if (oldChildren[i] != null) unmount(oldChildren[i], oldChildren[i]);
 	}
 
 	// Set refs only after unmount
-	//循环应用refs
+	//应用refs
 	if (refs) {
 		for (i = 0; i < refs.length; i++) {
 			applyRef(refs[i], refs[++i], refs[++i]);
@@ -294,7 +295,7 @@ export function toChildArray(children, callback, flattened) {
 		//没有回调则直接push
 	} else if (!callback) {
 		flattened.push(children);
-		//字符或者数字类型,创建虚拟节点
+		//字符或者数字类型，创建虚拟节点
 	} else if (typeof children == 'string' || typeof children == 'number') {
 		flattened.push(callback(createVNode(null, children, null, null)));
 	} else if (children._dom != null || children._component != null) {
