@@ -151,9 +151,9 @@ export function useReducer(reducer, initialState, init) {
 		hookState._value = [
 			//处理初始状态
 			!init ? invokeOrReturn(undefined, initialState) : init(initialState),
-			//更新状态函数
+			//状态更新函数
 			action => {
-				//调用reducer获得下个状态
+				//调用reducer获得新的状态
 				const nextValue = reducer(hookState._value[0], action);
 				//如果与当前状态不相同
 				if (hookState._value[0] !== nextValue) {
@@ -181,7 +181,7 @@ export function useEffect(callback, args) {
 	if (argsChanged(state._args, args)) {
 		state._value = callback;
 		state._args = args;
-		//推进队列里，稍后会后调用
+		//推进队列里，稍后会后执行
 		currentComponent.__hooks._pendingEffects.push(state);
 	}
 }
@@ -190,7 +190,7 @@ export function useEffect(callback, args) {
  * @param {import('./internal').Effect} callback
  * @param {any[]} args
  */
-//使用LayoutEffect
+//使用layoutEffect
 export function useLayoutEffect(callback, args) {
 	/** @type {import('./internal').EffectHookState} */
 	const state = getHookState(currentIndex++);
@@ -198,14 +198,14 @@ export function useLayoutEffect(callback, args) {
 	if (argsChanged(state._args, args)) {
 		state._value = callback;
 		state._args = args;
-		//推进队列里，等所有组件渲染完成后调用
+		//推进队列里，等所有组件渲染完成后执行
 		currentComponent._renderCallbacks.push(state);
 	}
 }
 
 //使用ref
 export function useRef(initialValue) {
-	//只有在组件首次渲染时执行此回调，返回带有current的对象
+	//只有在组件首次渲染时执行此回调，返回新的带有current的对象，其它都是返回缓存中的
 	return useMemo(() => ({ current: initialValue }), []);
 }
 
@@ -251,7 +251,7 @@ export function useMemo(factory, args) {
  */
 //使用callback，用来缓存一个函数
 export function useCallback(callback, args) {
-	//当args与旧的不相同时返回新的函数，不然返回缓存的函数
+	//当args与旧的不相同时返回新的函数，不然返回缓存中的函数
 	return useMemo(() => callback, args);
 }
 
@@ -350,6 +350,7 @@ function flushAfterPaintEffects() {
 function afterNextFrame(callback) {
 	const done = () => {
 		//清理定时器
+		//下面使用了两个异步执行，不会重复执行的原因是第一个执行到这儿会清空异步任务
 		clearTimeout(timeout);
 		cancelAnimationFrame(raf);
 		setTimeout(callback);
